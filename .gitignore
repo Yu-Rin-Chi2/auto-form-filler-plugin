@@ -1,0 +1,20 @@
+node_modules/
+dist/
+# E2E 専用ビルド（dist/ をコピーし、ローカルモックサーバー向け host_permissions を追加したもの。
+# npm run e2e が毎回生成する。リリース物ではないので提出・コミットしない）
+dist-e2e/
+
+# API キーは環境変数で渡す。ファイルに置く場合も絶対にコミットしない
+.env
+.env.*
+
+# PoC の実行結果（生の API レスポンスを含む）
+poc/results/
+
+# Playwright MCP の一時出力
+.playwright-mcp/
+
+# Playwright テスト実行結果（npm run e2e で毎回再生成される）
+test-results/
+playwright-report/
+blob-report/

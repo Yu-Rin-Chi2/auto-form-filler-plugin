@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Checkout | Example Store</title>
+</head>
+<body>
+<form>
+<h2>Shipping address</h2>
+<label>First name<input type="text" id="fx-0" name="firstName" required autocomplete="given-name"></label>
+<label>Last name<input type="text" id="fx-1" name="lastName" required autocomplete="family-name"></label>
+<h2>Contact</h2>
+<label>Email<input type="email" id="fx-2" name="email" required autocomplete="email"></label>
+<label>Phone<input type="tel" id="fx-3" name="phone" autocomplete="tel"></label>
+<h2>Shipping address</h2>
+<label>Country / Region<select id="fx-4" name="country" required><option value="United States">United States</option><option value="Japan">Japan</option><option value="United Kingdom">United Kingdom</option></select></label>
+<label>ZIP / Postal code<input type="text" id="fx-5" name="zip" required autocomplete="postal-code"></label>
+<label>City<input type="text" id="fx-6" name="city" required autocomplete="address-level2"></label>
+<label>Street address<input type="text" id="fx-7" name="address1" required autocomplete="address-line1"></label>
+<label>Apartment, suite, etc. (optional)<input type="text" id="fx-8" name="address2" autocomplete="address-line2"></label>
+<label>Company (optional)<input type="text" id="fx-9" name="company" autocomplete="organization"></label>
+<h2>Account</h2>
+<label>Date of birth<input type="date" id="fx-10" name="dob" autocomplete="bday"></label>
+<label>Order notes (optional)<textarea id="fx-11" name="notes"></textarea></label>
+</form>
+</body>
+</html>

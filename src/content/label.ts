@@ -1,0 +1,93 @@
+/**
+ * フィールドのラベル解決（要件 5.1.1）。
+ * 優先順位: aria-labelledby → aria-label → <label for> → 祖先 <label> →
+ *           同じ <tr> の <th> / 直前の <dt> → 直前の兄弟テキスト → placeholder → title → name
+ */
+
+function textOf(el: Element | null): string {
+  return el?.textContent?.trim() ?? '';
+}
+
+function fromAriaLabelledby(el: HTMLElement): string {
+  const attr = el.getAttribute('aria-labelledby');
+  if (!attr) return '';
+  const ids = attr.split(/\s+/).filter(Boolean);
+  const doc = el.ownerDocument;
+  const text = ids
+    .map((id) => textOf(doc.getElementById(id)))
+    .filter(Boolean)
+    .join(' ');
+  return text;
+}
+
+function fromLabelFor(el: HTMLElement): string {
+  const id = el.getAttribute('id');
+  if (!id) return '';
+  const doc = el.ownerDocument;
+  const labels = Array.from(doc.querySelectorAll('label[for]'));
+  const match = labels.find((l) => l.getAttribute('for') === id);
+  return textOf(match ?? null);
+}
+
+function fromAncestorLabel(el: HTMLElement): string {
+  const label = el.closest('label');
+  if (!label) return '';
+  const clone = label.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('input, select, textarea, button').forEach((n) => n.remove());
+  return clone.textContent?.trim() ?? '';
+}
+
+function fromTableOrDl(el: HTMLElement): string {
+  const tr = el.closest('tr');
+  if (tr) {
+    const th = tr.querySelector('th');
+    const text = textOf(th);
+    if (text) return text;
+  }
+  const dd = el.closest('dd');
+  if (dd) {
+    const prev = dd.previousElementSibling;
+    if (prev && prev.tagName === 'DT') {
+      const text = textOf(prev);
+      if (text) return text;
+    }
+  }
+  return '';
+}
+
+function fromPreviousSiblingText(el: HTMLElement): string {
+  let node: ChildNode | null = el.previousSibling;
+  while (node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent?.trim();
+      if (text) return text;
+      node = node.previousSibling;
+      continue;
+    }
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      // 直前が要素の場合、そのテキストはラベルとして使わない
+      break;
+    }
+    node = node.previousSibling;
+  }
+  return '';
+}
+
+export function resolveLabel(el: HTMLElement): string {
+  const strategies = [
+    () => fromAriaLabelledby(el),
+    () => el.getAttribute('aria-label')?.trim() ?? '',
+    () => fromLabelFor(el),
+    () => fromAncestorLabel(el),
+    () => fromTableOrDl(el),
+    () => fromPreviousSiblingText(el),
+    () => (el as HTMLInputElement).placeholder?.trim() ?? '',
+    () => el.getAttribute('title')?.trim() ?? '',
+    () => el.getAttribute('name')?.trim() ?? '',
+  ];
+  for (const strategy of strategies) {
+    const value = strategy();
+    if (value) return value;
+  }
+  return '';
+}

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ご予約 | サンプルホテル</title>
+</head>
+<body>
+<form>
+<h2>代表者情報</h2>
+<label>代表者氏名（姓）<input type="text" id="fx-0" name="guest_last" required></label>
+<label>代表者氏名（名）<input type="text" id="fx-1" name="guest_first" required></label>
+<label>姓（ローマ字）<input type="text" id="fx-2" name="guest_last_romaji" placeholder="YAMADA"></label>
+<label>名（ローマ字）<input type="text" id="fx-3" name="guest_first_romaji" placeholder="TARO"></label>
+<label>電話番号<input type="tel" id="fx-4" name="tel1" required maxlength="4"></label>
+<label><input type="tel" id="fx-5" name="tel2" maxlength="4"></label>
+<label><input type="tel" id="fx-6" name="tel3" maxlength="4"></label>
+<label>郵便番号<input type="text" id="fx-7" name="zip1" maxlength="3"></label>
+<label><input type="text" id="fx-8" name="zip2" maxlength="4"></label>
+<h2>ご宿泊内容</h2>
+<label>チェックイン日<input type="date" id="fx-9" name="checkin" required></label>
+<label>ご利用人数<select id="fx-10" name="guests"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+<label>ご要望<textarea id="fx-11" name="request"></textarea></label>
+</form>
+</body>
+</html>

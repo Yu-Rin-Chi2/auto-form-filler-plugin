@@ -1,0 +1,14 @@
+{
+  "ext_name": {
+    "message": "Auto Form Filler",
+    "description": "Extension name"
+  },
+  "ext_description": {
+    "message": "Uses Jev to identify form fields and auto-fill them from a profile stored only on your device. Your personal data never leaves your device.",
+    "description": "Extension description (store listing)"
+  },
+  "cmd_fill": {
+    "message": "Fill this page (last used profile)",
+    "description": "Keyboard shortcut description"
+  }
+}

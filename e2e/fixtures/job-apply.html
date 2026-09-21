@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>応募フォーム | 採用情報</title>
+</head>
+<body>
+<form>
+<h2>基本情報</h2>
+<label>姓（漢字）<input type="text" id="fx-0" name="family_name" required></label>
+<label>名（漢字）<input type="text" id="fx-1" name="first_name" required></label>
+<label>姓（ふりがな）<input type="text" id="fx-2" name="family_name_kana" required></label>
+<label>名（ふりがな）<input type="text" id="fx-3" name="first_name_kana" required></label>
+<label>生年月日<input type="date" id="fx-4" name="birthday" required></label>
+<h2>現住所</h2>
+<label>郵便番号<input type="text" id="fx-5" name="postal"></label>
+<label>住所<input type="text" id="fx-6" name="address"></label>
+<h2>連絡先</h2>
+<label>メールアドレス<input type="email" id="fx-7" name="email" required></label>
+<label>携帯電話番号<input type="tel" id="fx-8" name="phone" required></label>
+<h2>経歴</h2>
+<label>最終学歴<select id="fx-9" name="education"><option value="高校卒">高校卒</option><option value="専門学校卒">専門学校卒</option><option value="大学卒">大学卒</option><option value="大学院卒">大学院卒</option></select></label>
+<label>希望職種<select id="fx-10" name="position"><option value="エンジニア">エンジニア</option><option value="デザイナー">デザイナー</option><option value="営業">営業</option></select></label>
+<label>自己PR<textarea id="fx-11" name="pr"></textarea></label>
+</form>
+</body>
+</html>

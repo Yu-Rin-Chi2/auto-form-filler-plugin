@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>会員登録 | サンプルショップ</title>
+</head>
+<body>
+<form>
+<h2>お客様情報</h2>
+<label>姓<input type="text" id="fx-0" name="last_name" placeholder="山田" required autocomplete="family-name"></label>
+<label>名<input type="text" id="fx-1" name="first_name" placeholder="太郎" required autocomplete="given-name"></label>
+<label>セイ<input type="text" id="fx-2" name="last_name_kana" placeholder="ヤマダ" required></label>
+<label>メイ<input type="text" id="fx-3" name="first_name_kana" placeholder="タロウ" required></label>
+<label>メールアドレス<input type="email" id="fx-4" name="email" placeholder="example@example.com" required autocomplete="email"></label>
+<label>メールアドレス（確認用）<input type="email" id="fx-5" name="email_confirm" required></label>
+<label>電話番号<input type="tel" id="fx-6" name="tel" placeholder="09012345678" required autocomplete="tel"></label>
+<h2>お届け先</h2>
+<label>郵便番号<input type="text" id="fx-7" name="zip" placeholder="1000001" required autocomplete="postal-code"></label>
+<label>都道府県<select id="fx-8" name="pref" required><option value="北海道">北海道</option><option value="青森県">青森県</option><option value="岩手県">岩手県</option><option value="宮城県">宮城県</option><option value="秋田県">秋田県</option><option value="…">…</option><option value="東京都">東京都</option><option value="神奈川県">神奈川県</option><option value="…">…</option><option value="沖縄県">沖縄県</option></select></label>
+<label>市区町村<input type="text" id="fx-9" name="city" placeholder="千代田区" required autocomplete="address-level2"></label>
+<label>番地<input type="text" id="fx-10" name="address1" placeholder="千代田1-1-1" required autocomplete="address-line1"></label>
+<label>建物名・部屋番号<input type="text" id="fx-11" name="address2" placeholder="サンプルマンション101" autocomplete="address-line2"></label>
+<h2>お客様情報</h2>
+<label>生年月日<select id="fx-12" name="birth_year"><option value="1950">1950</option><option value="1951">1951</option><option value="…">…</option><option value="2005">2005</option><option value="2006">2006</option></select></label>
+<label>月<select id="fx-13" name="birth_month"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="…">…</option><option value="12">12</option></select></label>
+<label>日<select id="fx-14" name="birth_day"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="…">…</option><option value="31">31</option></select></label>
+<label>男性<input type="radio" name="gender" id="fx-15-0" value="男性"></label><label>女性<input type="radio" name="gender" id="fx-15-1" value="女性"></label><label>回答しない<input type="radio" name="gender" id="fx-15-2" value="回答しない"></label>
+<label>メールマガジンを受け取る<input type="checkbox" id="fx-16" name="mailmag"></label>
+</form>
+</body>
+</html>

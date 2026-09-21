@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>お支払い情報の入力 | サンプルショップ</title>
+</head>
+<body>
+<form>
+<h2>クレジットカード情報</h2>
+<label>カード名義（ローマ字）<input type="text" id="fx-0" name="card_name" placeholder="TARO YAMADA" required autocomplete="cc-name"></label>
+<label>カード番号<input type="text" id="fx-1" name="card_number" placeholder="1234 5678 9012 3456" required autocomplete="cc-number"></label>
+<label>有効期限（月）<select id="fx-2" name="exp_month" required><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="…">…</option><option value="12">12</option></select></label>
+<label>有効期限（年）<select id="fx-3" name="exp_year" required><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option><option value="…">…</option></select></label>
+<label>セキュリティコード<input type="text" id="fx-4" name="cvv" required maxlength="4" autocomplete="cc-csc"></label>
+<h2>請求先</h2>
+<label>請求先郵便番号<input type="text" id="fx-5" name="billing_zip" autocomplete="postal-code"></label>
+</form>
+</body>
+</html>

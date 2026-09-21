@@ -1,0 +1,14 @@
+{
+  "ext_name": {
+    "message": "Auto Form Filler",
+    "description": "拡張機能の名前"
+  },
+  "ext_description": {
+    "message": "Jev でフォームの項目を判定し、ローカルのプロフィールを自動入力します。個人情報は端末の外に送信しません。",
+    "description": "拡張機能の説明（ストア掲載文）"
+  },
+  "cmd_fill": {
+    "message": "このページに入力（前回のプロフィール）",
+    "description": "キーボードショートカットの説明"
+  }
+}

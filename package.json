@@ -1,0 +1,40 @@
+{
+  "name": "auto-form-filler-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run sync-version && npm run build:app && npm run build:content",
+    "build:app": "vite build",
+    "build:content": "vite build --config vite.content.config.ts",
+    "sync-version": "node scripts/sync-version.mjs",
+    "render-icons": "node scripts/render-icons.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "npm run build && tsx e2e/generate-fixtures.ts && tsx e2e/patch-manifest-for-e2e.ts && playwright test",
+    "poc": "tsx poc/run.ts",
+    "poc:ping": "tsx poc/ping.ts",
+    "poc:env": "node --env-file=.env --import tsx poc/run.ts",
+    "poc:ping:env": "node --env-file=.env --import tsx poc/ping.ts"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "jsdom": "^25.0.0",
+    "pngjs": "^7.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.0"
+  }
+}
