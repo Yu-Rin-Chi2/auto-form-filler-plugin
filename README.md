@@ -25,7 +25,15 @@ Jev（TypeSafe AI の判定特化モデル）でフォームの項目を判定�
 
 準備中です。公開され次第リンクを追加します。
 
-### 開発版（unpacked）を読み込む
+### GitHub Release から読み込む（ビルド不要・推奨）
+
+1. [Releases](https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/releases) ページから最新の `auto-form-filler-vX.Y.Z.zip` をダウンロードし、任意のフォルダに展開する。
+2. Chrome で `chrome://extensions` を開く。
+3. 右上の「デベロッパーモード」を有効にする。
+4. 「パッケージ化されていない拡張機能を読み込む」から、展開したフォルダを選択する。
+5. ツールバーに拡張のアイコンが表示されます。初回はオプションページが自動で開き、API キー設定へ進みます。
+
+### ソースからビルドして読み込む（開発者向け）
 
 1. このリポジトリを取得し、依存関係をインストールしてビルドします（後述の「開発手順」）。
 2. Chrome で `chrome://extensions` を開く。
