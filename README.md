@@ -121,4 +121,4 @@ docs/              requirements/, research/, test-scenarios/
 
 ## ライセンス
 
-未定（近日中に追加予定）。
+[MIT License](LICENSE)
