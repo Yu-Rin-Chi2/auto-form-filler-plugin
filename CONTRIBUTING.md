@@ -16,14 +16,47 @@ Auto Form Filler への貢献に興味を持っていただきありがとうご
 
 ## 開発の始め方
 
-`README.md` の「開発手順」を参照してください。
+### 必要要件
+
+- Node.js 20 以上
+- npm
+
+### セットアップ
 
 ```bash
 npm install
-npm run typecheck
-npm run test
-npm run build
 ```
+
+### 主なコマンド
+
+| コマンド | 内容 |
+|---|---|
+| `npm run dev` | Vite の開発サーバー（popup/options の単体確認用） |
+| `npm run build` | `dist/` に本番ビルドを生成（popup / options / background / content） |
+| `npm run typecheck` | TypeScript の型チェック |
+| `npm run test` | vitest による単体テスト・DOM テスト |
+| `npm run e2e` | ビルド後、Playwright で拡張をロードした E2E テストを実行 |
+| `npm run render-icons` | `public/icons/` のアイコン PNG を再生成 |
+
+### ディレクトリ構成
+
+```
+public/            manifest.json, _locales/, icons/（そのまま dist/ へコピー）
+src/
+  shared/          型、メッセージ定義、プロフィールスキーマと派生項目、storage ラッパー、i18n
+  background/      service worker: メッセージルータ、オーケストレーション、Jev クライアント、値の解決
+  content/         実行時注入: フィールド抽出、ラベル解決、値注入、ハイライト/トースト
+  popup/           React
+  options/         React
+tests/             vitest（unit / dom）
+e2e/               Playwright + 固定 HTML フィクスチャ + ローカルモックサーバー
+poc/               Jev 精度 PoC（実 API を叩く。CI では実行しない）
+docs/              requirements/, research/, test-scenarios/
+```
+
+### Jev への実通信について
+
+`poc/` 配下の PoC スクリプトは実際に Jev API（TypeSafe / OpenRouter）へ通信します。本体（`src/`）のテスト（`npm run test` / `npm run e2e`）は実 API に一切通信しません（`npm run e2e` はローカルのモック HTTP サーバーを使います）。
 
 ## Pull Request を送る前に
 
@@ -39,6 +72,9 @@ npm run build
 - `npm run e2e` は `dist/` をコピーした `dist-e2e/` にローカルモックサーバー向けの
   `host_permissions` を追加してから拡張をロードします。`dist-e2e/` は E2E 専用のビルドで
   あり、`dist/` 自体は変更されません。**`dist-e2e/` は提出物に含めないでください。**
+- 提出前に `dist/manifest.json` の `host_permissions` が `api.typesafe.ai` /
+  `openrouter.ai` の 2 件のみであることを確認してください（`npm run e2e` を実行しても
+  `dist/` は変更されない設計ですが、念のため zip 化前に目視確認してください）。
 
 ## バグ報告
 
