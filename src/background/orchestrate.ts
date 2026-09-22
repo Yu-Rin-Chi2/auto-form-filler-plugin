@@ -2,7 +2,7 @@
  * 自動入力のオーケストレーション（要件 4.1 のシーケンス）。
  * content script へのメッセージング・Jev 呼び出し・storage 更新を行う、拡張の司令塔。
  */
-import { PROFILE_FIELD_KEYS_FOR_JEV } from '../shared/profile-fields';
+import { buildProfileDescriptions } from '../shared/profile-fields';
 import { resolveLocale, t } from '../shared/i18n';
 import { getProfiles, getSettings, saveLastResult, saveSettings } from '../shared/storage';
 import type {
@@ -11,10 +11,11 @@ import type {
   ExtractFieldsResponse,
   FieldOutcome,
   FillResult,
-  PingRequest,
   Profile,
+  ShowToastRequest,
 } from '../shared/types';
 import { JevError } from '../shared/types';
+import { findPendingFrameOrigins, mergeFrameExtractions, splitAssignmentsByFrame, type FrameExtraction } from './frames';
 import { buildJevRequest } from './jev/build-request';
 import { callJevWithValidation, resolveProviderConfig } from './jev/client';
 import type { ChoiceAnswer } from './jev/validate-response';
@@ -45,20 +46,60 @@ async function getActiveTab(): Promise<chrome.tabs.Tab> {
   return tab;
 }
 
-async function ensureContentScriptInjected(tabId: number): Promise<void> {
+/**
+ * content script をタブの全フレームに注入し、注入できたフレーム ID の一覧を返す。
+ *
+ * - content script は二重注入に耐える（window 上のフラグで idempotent）ため、毎回そのまま注入する
+ * - `allFrames: true` は、拡張がアクセスできるフレーム（最上位 + 同一オリジン iframe +
+ *   ユーザーがホスト権限を許可したクロスオリジン iframe）にだけ注入される。権限のない
+ *   クロスオリジン iframe は対象外になるが、そのオリジンは抽出結果の crossOriginFrameOrigins
+ *   から分かるので、後段で「許可して再実行」を案内する
+ * - 万一 allFrames で失敗した場合は最上位フレームのみで再試行する
+ */
+async function injectContentScript(tabId: number): Promise<number[]> {
   try {
-    const ping: PingRequest = { type: 'PING' };
-    await chrome.tabs.sendMessage(tabId, ping);
-    return;
+    const results = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files: ['content.js'] });
+    const frameIds = Array.from(new Set(results.map((r) => r.frameId)));
+    if (frameIds.length > 0) return frameIds;
   } catch {
-    // 未注入。以下で注入する
+    // 下の最上位フレームのみの注入にフォールバックする
   }
   try {
     await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+    return [0];
   } catch {
     // chrome:// 等、注入できないページ（要件 5.5）
     throw new JevError('unsupported_page', 'このページでは使えません');
   }
+}
+
+/** 各フレームからフィールドを抽出する。途中で消えたフレーム（ナビゲーション等）は無視する */
+async function extractFromFrames(tabId: number, frameIds: number[]): Promise<FrameExtraction[]> {
+  const extractions: FrameExtraction[] = [];
+  for (const frameId of frameIds) {
+    try {
+      const result = (await chrome.tabs.sendMessage(tabId, { type: 'EXTRACT_FIELDS' }, { frameId })) as
+        | ExtractFieldsResponse
+        | undefined;
+      if (result && result.fields) extractions.push({ frameId, result });
+    } catch {
+      // このフレームには到達できなかった（すでに破棄された等）。他のフレームは続行する
+    }
+  }
+  return extractions;
+}
+
+/** 指定オリジンのうち、chrome.permissions で既にホスト権限を持っているものを返す */
+async function filterPermittedOrigins(origins: string[]): Promise<string[]> {
+  const permitted: string[] = [];
+  for (const origin of origins) {
+    try {
+      if (await chrome.permissions.contains({ origins: [`${origin}/*`] })) permitted.push(origin);
+    } catch {
+      // permissions API が使えない場合は未許可として扱う
+    }
+  }
+  return permitted;
 }
 
 export interface FillOutcome {
@@ -127,19 +168,37 @@ async function runFillInner(profileId: string): Promise<FillOutcome> {
     throw new JevError('unsupported_page', 'このページでは使えません');
   }
 
-  await ensureContentScriptInjected(tabId);
-
-  const extraction = (await chrome.tabs.sendMessage(tabId, { type: 'EXTRACT_FIELDS' })) as ExtractFieldsResponse;
+  const frameIds = await injectContentScript(tabId);
+  const extractions = await extractFromFrames(tabId, frameIds);
+  if (extractions.length === 0) {
+    throw new JevError('unsupported_page', 'このページでは使えません');
+  }
+  const extraction = mergeFrameExtractions(extractions);
+  const topFrameId = extractions.find((e) => e.result.isTopFrame)?.frameId ?? 0;
 
   if (!isSupportedUrl(extraction.page.url)) {
     throw new JevError('unsupported_page', 'このページでは使えません');
   }
+
+  // 拡張が到達できなかったクロスオリジン iframe（フォームがその中にある可能性がある）
+  const permitted = await filterPermittedOrigins(extraction.crossOriginFrameOrigins);
+  const pendingFrameOrigins = findPendingFrameOrigins(extraction, permitted);
+
   if (Object.keys(extraction.fields).length === 0) {
+    if (pendingFrameOrigins.length > 0) {
+      throw new JevError(
+        'frame_permission_needed',
+        'フォームは別サイトの iframe 内にあります。アクセスを許可すると入力できます',
+        pendingFrameOrigins,
+      );
+    }
     throw new JevError('no_fields', '入力できるフォームが見つかりません');
   }
 
   const cfg = resolveProviderConfig(settings);
-  const built = buildJevRequest(extraction.page, extraction.fields, cfg.model);
+  // 固定項目 + このプロフィールのユーザー定義項目（説明文のみ。値は送らない）
+  const profileDescriptions = buildProfileDescriptions(profile.customFields ?? []);
+  const built = buildJevRequest(extraction.page, extraction.fields, cfg.model, profileDescriptions);
   if (!built.request) {
     throw new JevError('no_fields', '入力できるフォームが見つかりません');
   }
@@ -148,7 +207,7 @@ async function runFillInner(profileId: string): Promise<FillOutcome> {
     built.request,
     cfg,
     built.fieldIds,
-    PROFILE_FIELD_KEYS_FOR_JEV,
+    Object.keys(profileDescriptions),
     { debugLogging: settings.debugLogging },
   );
 
@@ -161,19 +220,34 @@ async function runFillInner(profileId: string): Promise<FillOutcome> {
     fields: extraction.fields,
     answers,
     profileFields: profile.fields,
+    customFields: profile.customFields ?? [],
     settings: { confidenceThreshold: settings.confidenceThreshold, overwriteFilled: settings.overwriteFilled },
   });
 
-  const locale = resolveLocale(settings.locale);
-  const toastMessage = buildToastMessage(outcomes, locale);
+  // 入力はフレームごとに分けて送る（各フレームの content script は自分の局所 ID しか知らない）
+  for (const [frameId, frameAssignments] of splitAssignmentsByFrame(assignments, extraction.locations)) {
+    const applyRequest: ApplyFillRequest = {
+      type: 'APPLY_FILL',
+      assignments: frameAssignments,
+      highlight: settings.highlightFilled,
+    };
+    try {
+      await chrome.tabs.sendMessage<ApplyFillRequest, ApplyFillResponse>(tabId, applyRequest, { frameId });
+    } catch {
+      // フレームが消えていた場合。他のフレームの入力は続行する
+    }
+  }
 
-  const applyRequest: ApplyFillRequest = {
-    type: 'APPLY_FILL',
-    assignments,
-    highlight: settings.highlightFilled,
-    toastMessage,
-  };
-  await chrome.tabs.sendMessage<ApplyFillRequest, ApplyFillResponse>(tabId, applyRequest);
+  // 結果トーストは集計した 1 件だけを最上位フレームに表示する
+  const locale = resolveLocale(settings.locale);
+  if (outcomes.some((o) => o.reason === 'filled')) {
+    const toast: ShowToastRequest = { type: 'SHOW_TOAST', message: buildToastMessage(outcomes, locale) };
+    try {
+      await chrome.tabs.sendMessage(tabId, toast, { frameId: topFrameId });
+    } catch {
+      // トーストが出せなくても入力結果には影響しない
+    }
+  }
 
   const result = aggregateFillResult(outcomes, {
     url: extraction.page.url,
@@ -183,6 +257,7 @@ async function runFillInner(profileId: string): Promise<FillOutcome> {
     latencyMs,
     inputTokens: response.usage?.input_tokens ?? 0,
   });
+  if (pendingFrameOrigins.length > 0) result.pendingFrameOrigins = pendingFrameOrigins;
 
   await saveLastResult(result, outcomes);
   await saveSettings({ ...settings, lastProfileId: profileId });
@@ -206,6 +281,7 @@ function errorToFillResult(error: unknown, profileId: string, url: string): Fill
     inputTokens: 0,
     error: jevError.message,
     errorKind: jevError.kind,
+    ...(jevError.frameOrigins.length > 0 ? { pendingFrameOrigins: jevError.frameOrigins } : {}),
   };
 }
 

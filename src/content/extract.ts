@@ -10,7 +10,8 @@ export { MAX_FIELDS };
 
 const CANDIDATE_SELECTOR = 'input, select, textarea, [contenteditable="true"]';
 const STRUCTURALLY_EXCLUDED_TYPES = new Set(['file', 'hidden', 'submit', 'button', 'image', 'reset']);
-const CARD_LABEL_PATTERN = /カード番号|card ?number|cvv|cvc|セキュリティコード|有効期限/i;
+/** カード情報・暗証番号（PIN）は観測段階で除外する（P3）。銀行口座（口座番号・支店コード等）は対象 */
+const CARD_LABEL_PATTERN = /カード番号|card ?number|cvv|cvc|セキュリティコード|有効期限|暗証番号|暗証|\bpin\b|passcode/i;
 
 /** fieldId → 実 DOM 要素（radio グループは複数要素の配列）。EXTRACT_FIELDS のたびに作り直す */
 let elementRegistry = new Map<string, HTMLElement | HTMLElement[]>();
@@ -49,15 +50,68 @@ function hasHiddenStyle(el: HTMLElement): boolean {
 function isVisible(el: HTMLElement): boolean {
   if (hasAriaHiddenAncestor(el)) return false;
   if (hasHiddenStyle(el)) return false;
-  const withCheckVisibility = el as HTMLElement & { checkVisibility?: () => boolean };
+  const withCheckVisibility = el as HTMLElement & { checkVisibility?: (opts?: { opacityProperty?: boolean }) => boolean };
   if (typeof withCheckVisibility.checkVisibility === 'function') {
     try {
-      if (!withCheckVisibility.checkVisibility()) return false;
+      // opacity: 0 の要素（見た目のカスタム select の裏に隠した <select> など）は
+      // ユーザーには見えておらず入力対象でもないため除外する
+      if (!withCheckVisibility.checkVisibility({ opacityProperty: true })) return false;
     } catch {
       // ブラウザ差異は無視する（jsdom 等では未実装）
     }
   }
   return true;
+}
+
+/**
+ * document を再帰的にたどり、条件に一致する要素を DOM 順に集める。
+ * `querySelectorAll` は shadow root を貫通しないため、open な shadow root を持つ要素を見つけたら
+ * その中も探索する（Web Components ベースのフォーム対応）。closed な shadow root は到達不能。
+ */
+function collectElements(doc: Document, match: (el: Element) => boolean): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  const walk = (node: Element) => {
+    if (match(node)) out.push(node as HTMLElement);
+    const shadow = (node as HTMLElement).shadowRoot;
+    if (shadow) for (const child of Array.from(shadow.children)) walk(child);
+    for (const child of Array.from(node.children)) walk(child);
+  };
+  for (const el of Array.from(doc.children)) walk(el);
+  return out;
+}
+
+/** iframe をこの大きさ未満なら「フォームが入っている可能性が低い」とみなす（トラッキング用の 1×1 等を除外） */
+const MIN_FRAME_WIDTH = 200;
+const MIN_FRAME_HEIGHT = 150;
+
+/**
+ * この document 内で可視かつ別オリジンの iframe のオリジン一覧を返す。
+ * 拡張はクロスオリジン iframe の中を（ホスト権限がなければ）読めないため、
+ * background 側が権限の有無を判定し、必要ならユーザーに許可を求める材料にする。
+ */
+function findCrossOriginFrameOrigins(doc: Document): string[] {
+  const selfOrigin = doc.location?.origin ?? '';
+  const origins = new Set<string>();
+  for (const frame of collectElements(doc, (el) => el.tagName.toLowerCase() === 'iframe')) {
+    const src = frame.getAttribute('src');
+    if (!src) continue;
+    let origin: string;
+    try {
+      const url = new URL(src, doc.baseURI);
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') continue;
+      origin = url.origin;
+    } catch {
+      continue;
+    }
+    if (!origin || origin === selfOrigin) continue;
+    if (!isVisible(frame)) continue;
+    const rect = frame.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0 && (rect.width < MIN_FRAME_WIDTH || rect.height < MIN_FRAME_HEIGHT)) {
+      continue;
+    }
+    origins.add(origin);
+  }
+  return Array.from(origins);
 }
 
 function isInsideForm(el: HTMLElement): boolean {
@@ -148,7 +202,7 @@ export function extractFields(doc: Document = document): ExtractionResult {
   fieldsCache = {};
   const page = resolvePageInfo(doc);
 
-  const candidates = Array.from(doc.querySelectorAll<HTMLElement>(CANDIDATE_SELECTOR));
+  const candidates = collectElements(doc, (el) => el.matches(CANDIDATE_SELECTOR));
   const fields: ExtractedFields = {};
   let excludedCount = 0;
   let overLimitCount = 0;
@@ -253,5 +307,14 @@ export function extractFields(doc: Document = document): ExtractionResult {
   }
 
   fieldsCache = fields;
-  return { fields, page, excludedCount, overLimitCount };
+  const win = doc.defaultView;
+  const isTopFrame = !win || win === win.top;
+  return {
+    fields,
+    page,
+    excludedCount,
+    overLimitCount,
+    crossOriginFrameOrigins: findCrossOriginFrameOrigins(doc),
+    isTopFrame,
+  };
 }

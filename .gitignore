@@ -18,3 +18,9 @@ poc/results/
 test-results/
 playwright-report/
 blob-report/
+
+# リリース zip（npm run package が生成）
+release/
+
+# Claude Code のローカル設定（個人の権限設定を含む）
+.claude/

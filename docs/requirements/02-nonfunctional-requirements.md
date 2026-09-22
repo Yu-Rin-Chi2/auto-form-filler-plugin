@@ -24,6 +24,9 @@
 
 - カード情報: `autocomplete="cc-*"` およびカード関連ラベルのフィールドは観測段階で除外。プロフィールにも項目を設けない
 - パスワード: `type=password` を除外。プロフィールにも項目を設けない
+- 暗証番号（PIN）: ラベルが「暗証番号」「PIN」「passcode」に一致するフィールドを観測段階で除外（2026-09-22）
+- 銀行口座（銀行名・支店・口座番号・預金種別）は**扱う**（2026-09-22 決定）。カードと違い Chrome の自動入力が対応しておらず、振込先登録フォームで実用価値が高いため。保存は他の項目と同じ `chrome.storage.local`（暗号化なし）で、その旨をプライバシーポリシーに明記する
+- ユーザー定義項目: 値は他の項目と同じ扱い。項目名・説明はユーザー自身が判定のために書くもので Jev に送る（設定画面とプライバシーポリシーに明記）
 - 除外は content script 内で行い、Service Worker にも渡さない
 
 ### 1.3 権限の最小化（Web Store 審査対応）
@@ -34,8 +37,11 @@
 | `scripting` | content script の実行時注入 | 常駐させない |
 | `storage` | プロフィール・設定の保存 | |
 | `host_permissions: api.typesafe.ai, openrouter.ai` | Jev API 呼び出し | CORS 回避のため必要 |
+| `optional_host_permissions: https://*/*, http://*/*` | クロスオリジン iframe 内のフォーム（Stripe Connect のホスト型オンボーディング等）への注入 | 既定は無効。入力欄 0 件かつ可視な別オリジン iframe があるときだけポップアップで「許可して再実行」を提示し、ユーザー操作起点で `permissions.request` をそのオリジン 1 件に対して呼ぶ。許可一覧と取り消しは設定「プライバシー」（2026-09-22 追加） |
 
-- `tabs`, `webNavigation`, `cookies`, `<all_urls>` は使わない
+- `tabs`, `webNavigation`, `cookies`, `<all_urls>`（固定権限として）は使わない
+- content script は `allFrames: true` で注入する。`activeTab` の範囲（最上位 + 同一オリジン iframe）と、ユーザーが許可したオリジンの iframe にのみ届く。未許可のクロスオリジン iframe は Chrome が注入対象から外す（エラーにはならない）
+- 抽出は open な Shadow DOM を再帰的に探索する。closed な shadow root と Canvas 描画のフォームは対象外
 - Single purpose: 「フォームへの自動入力」に限定。無関係な機能を入れない
 - リモートコードの実行禁止（MV3 要件）。すべてバンドルに同梱
 
@@ -154,10 +160,15 @@
 
 ## 8. Web Store 掲載要件（チェックリスト）
 
-- [ ] Single purpose の説明文
-- [ ] 各権限の使用理由（審査フォーム）
-- [ ] プライバシーポリシー URL（GitHub Pages）
-- [ ] データ使用開示: 「個人を特定できる情報を収集しない」「ユーザーデータを第三者に販売しない」「拡張の主目的以外に使用しない」
-- [ ] スクリーンショット（ポップアップ、オプション、入力結果）
-- [ ] 128px アイコン、プロモーション画像
-- [ ] リモートコードなしの宣言
+提出用の文言・画像は [docs/store/listing.md](../store/listing.md) に集約（2026-09-22）。
+
+- [x] Single purpose の説明文 → listing.md 2 章
+- [x] 各権限の使用理由（審査フォーム） → listing.md 2 章
+- [x] プライバシーポリシー URL → GitHub 上の `PRIVACY.md`（GitHub Pages は不要と判断）
+- [x] データ使用開示: 「個人を特定できる情報を収集しない」「ユーザーデータを第三者に販売しない」「拡張の主目的以外に使用しない」 → listing.md 2 章
+- [x] スクリーンショット（ポップアップ、オプション、入力結果） → `npm run store-screenshots`
+- [x] 128px アイコン、プロモーション画像 → `public/icons/icon128.png`、`npm run render-promo`
+- [x] リモートコードなしの宣言 → listing.md 2 章
+- [x] 提出 zip の生成 → `npm run package`（`release/`。E2E 用 host_permissions の混入を検査）
+- [ ] デベロッパー登録（$5）・メール確認・2 段階認証（ユーザー作業）
+- [ ] ダッシュボードで提出（ユーザー作業）

@@ -66,8 +66,7 @@ export function buildTestSettings(overrides: Partial<Settings> = {}): Settings {
  * choice に対して妥当な probabilities（全項目キーを含み、合計が 1 に近い）を組み立てる。
  * Jev のレスポンス検証（5.2）を通過させるための最小限のダミーデータ。
  */
-export function buildChoiceAnswer(choice: string, confidence = 0.95) {
-  const keys = PROFILE_FIELD_KEYS_FOR_JEV;
+export function buildChoiceAnswer(choice: string, confidence = 0.95, keys: string[] = PROFILE_FIELD_KEYS_FOR_JEV) {
   const remaining = keys.filter((k) => k !== choice);
   const leftover = 1 - confidence;
   const each = remaining.length > 0 ? leftover / remaining.length : 0;

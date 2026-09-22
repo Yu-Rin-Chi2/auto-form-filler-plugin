@@ -1,13 +1,32 @@
+import { useCallback, useEffect, useState } from 'react';
 import type { MessageKey } from '../../shared/i18n';
+import { listGrantedFrameOrigins, originToHost, revokeFrameOrigin } from '../../shared/frame-permissions';
+import { PRIVACY_URL, REPO_URL } from '../../shared/links';
 
 type Props = {
   t: (key: MessageKey, params?: Record<string, string | number>) => string;
 };
 
-const REPO_URL = 'https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin';
-const PRIVACY_URL = `${REPO_URL}/blob/main/PRIVACY.md`;
-
 export const PrivacyTab = ({ t }: Props) => {
+  const [grantedOrigins, setGrantedOrigins] = useState<string[]>([]);
+
+  const reload = useCallback(async () => {
+    try {
+      setGrantedOrigins(await listGrantedFrameOrigins());
+    } catch {
+      setGrantedOrigins([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const revoke = async (origin: string) => {
+    await revokeFrameOrigin(origin);
+    await reload();
+  };
+
   return (
     <div className="card" style={{ maxWidth: 560 }}>
       <h3 className="section-title">{t('options.privacy.sendTitle')}</h3>
@@ -25,6 +44,23 @@ export const PrivacyTab = ({ t }: Props) => {
       </ul>
 
       <p className="hint">{t('options.privacy.storageNote')}</p>
+
+      <h3 className="section-title">{t('options.privacy.grantedTitle')}</h3>
+      <p className="hint">{t('options.privacy.grantedBody')}</p>
+      {grantedOrigins.length === 0 ? (
+        <p className="hint">{t('options.privacy.grantedEmpty')}</p>
+      ) : (
+        <ul className="privacy-list" data-testid="granted-frame-origins">
+          {grantedOrigins.map((origin) => (
+            <li key={origin}>
+              {originToHost(origin)}{' '}
+              <button type="button" className="link" onClick={() => void revoke(origin)}>
+                {t('options.privacy.revoke')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="button-row" style={{ justifyContent: 'flex-start', marginTop: 12 }}>
         <a className="link" href={PRIVACY_URL} target="_blank" rel="noreferrer">

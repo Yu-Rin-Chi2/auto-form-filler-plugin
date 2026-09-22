@@ -14,5 +14,5 @@
     "types": ["chrome", "vite/client", "vitest/globals"],
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "e2e/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "e2e/**/*.ts", "scripts/**/*.ts"]
 }

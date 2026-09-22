@@ -74,3 +74,38 @@ for (const [id, body] of Object.entries(EDGE_FIXTURES)) {
   writeFileSync(outPath, html, 'utf8');
   console.log(`[generate-fixtures] wrote ${outPath}`);
 }
+
+// iframe 内フォーム用のホストページ（Stripe Connect のホスト型オンボーディングを模す）。
+// iframe の src は URL のハッシュ（#src=...）で指定する。E2E ではモックサーバーを 2 つ起動し、
+// 別ポート（= 別オリジン）の ec-signup.html を埋め込むことでクロスオリジン iframe を再現する。
+// 最上位ページには言語切替の <select>（opacity:0）だけを置き、これは抽出対象外になることも確認する。
+const IFRAME_HOST_HTML = `<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><title>iframe-host</title></head>
+<body>
+  <h1>アカウント設定</h1>
+  <div style="position:relative;width:120px;height:24px">
+    <span>日本語</span>
+    <select name="locale" style="position:absolute;left:0;top:0;width:100%;height:100%;opacity:0">
+      <option value="ja">日本語</option><option value="en">English</option>
+    </select>
+  </div>
+  <div id="frame-slot"></div>
+  <script>
+    (function () {
+      var m = /[#&]src=([^&]+)/.exec(location.hash);
+      if (!m) return;
+      var iframe = document.createElement('iframe');
+      iframe.src = decodeURIComponent(m[1]);
+      iframe.style.width = '800px';
+      iframe.style.height = '900px';
+      iframe.style.border = '0';
+      document.getElementById('frame-slot').appendChild(iframe);
+    })();
+  </script>
+</body>
+</html>
+`;
+const iframeHostPath = join(outDir, 'iframe-host.html');
+writeFileSync(iframeHostPath, IFRAME_HOST_HTML, 'utf8');
+console.log(`[generate-fixtures] wrote ${iframeHostPath}`);

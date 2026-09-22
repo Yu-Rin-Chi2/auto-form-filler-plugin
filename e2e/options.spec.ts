@@ -270,8 +270,33 @@ test.describe('オプション: API 設定（E2E-OPTIONS-10〜13）', () => {
     await page.goto(`chrome-extension://${extensionId}/options.html#api`);
     await page.reload();
 
-    // maskKey('sk-test') = '•'.repeat(3) + 'test'
-    await expect(page.locator('#api-key')).toHaveValue('•••test');
+    // 入力欄は password 型で伏字表示（貼り付け可能なまま）。保存済みキーの末尾 4 文字はヒント行に表示
+    await expect(page.locator('#api-key')).toHaveAttribute('type', 'password');
+    await expect(page.getByText('保存済みのキー: •••test')).toBeVisible();
+
+    // 「表示」で平文に切り替わる
+    await page.getByRole('button', { name: '表示' }).click();
+    await expect(page.locator('#api-key')).toHaveAttribute('type', 'text');
+    await expect(page.locator('#api-key')).toHaveValue('sk-test');
+    await page.close();
+  });
+
+  test('E2E-OPTIONS-11b: 伏字状態でも API キーを貼り付けて保存できる', async ({ context, extensionId }) => {
+    await seedStorage(context, extensionId, {
+      profiles: [],
+      settings: buildTestSettings({ apiKey: '' }),
+    });
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/options.html#api`);
+
+    const input = page.locator('#api-key');
+    await expect(input).toHaveAttribute('type', 'password');
+    await input.fill('  sk-or-v1-pasted  ');
+    await expect(input).toHaveValue('sk-or-v1-pasted');
+    await page.getByRole('button', { name: '保存' }).click();
+    await page.reload();
+
+    await expect(page.getByText('保存済みのキー: •••••••••••sted')).toBeVisible();
     await page.close();
   });
 

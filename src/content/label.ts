@@ -8,13 +8,23 @@ function textOf(el: Element | null): string {
   return el?.textContent?.trim() ?? '';
 }
 
+/**
+ * id 参照（aria-labelledby / label[for]）を解決するスコープ。
+ * shadow DOM 内の要素では `ownerDocument` ではなく所属する shadow root を使う必要がある
+ * （id はツリースコープごとに独立しているため）。
+ */
+function scopeOf(el: HTMLElement): Document | ShadowRoot {
+  const root = el.getRootNode();
+  return root instanceof ShadowRoot ? root : el.ownerDocument;
+}
+
 function fromAriaLabelledby(el: HTMLElement): string {
   const attr = el.getAttribute('aria-labelledby');
   if (!attr) return '';
   const ids = attr.split(/\s+/).filter(Boolean);
-  const doc = el.ownerDocument;
+  const scope = scopeOf(el);
   const text = ids
-    .map((id) => textOf(doc.getElementById(id)))
+    .map((id) => textOf(scope.getElementById(id)))
     .filter(Boolean)
     .join(' ');
   return text;
@@ -23,8 +33,7 @@ function fromAriaLabelledby(el: HTMLElement): string {
 function fromLabelFor(el: HTMLElement): string {
   const id = el.getAttribute('id');
   if (!id) return '';
-  const doc = el.ownerDocument;
-  const labels = Array.from(doc.querySelectorAll('label[for]'));
+  const labels = Array.from(scopeOf(el).querySelectorAll('label[for]'));
   const match = labels.find((l) => l.getAttribute('for') === id);
   return textOf(match ?? null);
 }

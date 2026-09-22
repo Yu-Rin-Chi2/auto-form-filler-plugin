@@ -3,6 +3,7 @@
  * chrome.storage.sync は絶対に呼ばない（要件 P1 / 02-nonfunctional 1.1）。
  */
 import { DEFAULT_SETTINGS } from './types';
+import { normalizeProfile } from './profile-schema';
 import type { FieldOutcome, FillResult, Profile, Settings } from './types';
 
 const STORAGE_KEYS = {
@@ -23,7 +24,9 @@ async function setItems(items: Record<string, unknown>): Promise<void> {
 }
 
 export async function getProfiles(): Promise<Profile[]> {
-  return getItem<Profile[]>(STORAGE_KEYS.profiles, []);
+  // 旧バージョンで保存されたプロフィールは後から追加された項目を持たないため、読み込み時に補う
+  const stored = await getItem<Profile[]>(STORAGE_KEYS.profiles, []);
+  return stored.map(normalizeProfile);
 }
 
 export async function saveProfiles(profiles: Profile[]): Promise<void> {

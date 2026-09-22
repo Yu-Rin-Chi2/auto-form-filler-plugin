@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { MessageKey } from '../shared/i18n';
 import { useLocale } from '../shared/useLocale';
+import { DONATE_URL, REPO_URL } from '../shared/links';
 import type { OptionsTabId } from '../shared/types';
 import { useOptionsData } from './hooks/useOptionsData';
 import { ApiTab } from './tabs/ApiTab';
@@ -65,6 +66,17 @@ export const App = () => {
         )}
         {tab === 'privacy' && <PrivacyTab t={t} />}
       </main>
+      <footer className="options-footer">
+        <p className="options-footer__body">{t('support.footerBody')}</p>
+        <div className="options-footer__links">
+          <a className="donate-link" href={DONATE_URL} target="_blank" rel="noreferrer">
+            {t('support.donateLink')}
+          </a>
+          <a className="link" href={REPO_URL} target="_blank" rel="noreferrer">
+            {t('support.sourceLink')}
+          </a>
+        </div>
+      </footer>
     </div>
   );
 };

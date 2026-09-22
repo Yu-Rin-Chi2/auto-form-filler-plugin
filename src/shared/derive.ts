@@ -1,7 +1,8 @@
 /**
  * プロフィール派生項目の生成（要件 2.4）。純粋関数のみ。DOM・storage に依存させない。
  */
-import type { DerivedFieldKey, ProfileFieldKey, ProfileFields } from './types';
+import { isCustomFieldKey } from './types';
+import type { AccountType, DerivedFieldKey, ProfileFieldKey, ProfileFields, SnsFieldKey } from './types';
 
 const FULL_WIDTH_SPACE = '　';
 const HALF_WIDTH_SPACE = ' ';
@@ -36,6 +37,145 @@ export function deriveAddressFull(fields: ProfileFields): string {
     [fields.prefecture, fields.city, fields.address_line1, fields.address_line2],
     '',
   );
+}
+
+/** 都道府県 → カナ（接尾辞の都・道・府・県を含む読み）。prefecture_kana の派生に使う */
+const PREFECTURE_KANA: Record<string, string> = {
+  北海道: 'ホッカイドウ',
+  青森県: 'アオモリケン',
+  岩手県: 'イワテケン',
+  宮城県: 'ミヤギケン',
+  秋田県: 'アキタケン',
+  山形県: 'ヤマガタケン',
+  福島県: 'フクシマケン',
+  茨城県: 'イバラキケン',
+  栃木県: 'トチギケン',
+  群馬県: 'グンマケン',
+  埼玉県: 'サイタマケン',
+  千葉県: 'チバケン',
+  東京都: 'トウキョウト',
+  神奈川県: 'カナガワケン',
+  新潟県: 'ニイガタケン',
+  富山県: 'トヤマケン',
+  石川県: 'イシカワケン',
+  福井県: 'フクイケン',
+  山梨県: 'ヤマナシケン',
+  長野県: 'ナガノケン',
+  岐阜県: 'ギフケン',
+  静岡県: 'シズオカケン',
+  愛知県: 'アイチケン',
+  三重県: 'ミエケン',
+  滋賀県: 'シガケン',
+  京都府: 'キョウトフ',
+  大阪府: 'オオサカフ',
+  兵庫県: 'ヒョウゴケン',
+  奈良県: 'ナラケン',
+  和歌山県: 'ワカヤマケン',
+  鳥取県: 'トットリケン',
+  島根県: 'シマネケン',
+  岡山県: 'オカヤマケン',
+  広島県: 'ヒロシマケン',
+  山口県: 'ヤマグチケン',
+  徳島県: 'トクシマケン',
+  香川県: 'カガワケン',
+  愛媛県: 'エヒメケン',
+  高知県: 'コウチケン',
+  福岡県: 'フクオカケン',
+  佐賀県: 'サガケン',
+  長崎県: 'ナガサキケン',
+  熊本県: 'クマモトケン',
+  大分県: 'オオイタケン',
+  宮崎県: 'ミヤザキケン',
+  鹿児島県: 'カゴシマケン',
+  沖縄県: 'オキナワケン',
+};
+
+/**
+ * 都道府県のカナ。「東京」「東京都」のどちらの表記でも解決する。
+ * 表にない値（海外の州名など）は空文字（未設定扱い）。
+ */
+export function derivePrefectureKana(prefecture: string): string {
+  const trimmed = prefecture.trim();
+  if (!trimmed) return '';
+  const direct = PREFECTURE_KANA[trimmed];
+  if (direct) return direct;
+  // 接尾辞なし（「東京」「大阪」「北海」）: 表のキーから接尾辞を除いた形で照合する
+  for (const [name, kana] of Object.entries(PREFECTURE_KANA)) {
+    const stem = name === '北海道' ? '北海道' : name.slice(0, -1);
+    if (stem === trimmed) return kana;
+  }
+  return '';
+}
+
+/** 住所カナ一体型。区切りなしで連結（都道府県カナは prefecture から派生） */
+export function deriveAddressKanaFull(fields: ProfileFields): string {
+  return joinNonEmpty(
+    [derivePrefectureKana(fields.prefecture), fields.city_kana, fields.address_line1_kana, fields.address_line2_kana],
+    '',
+  );
+}
+
+/** 預金種別のテキスト表現（テキスト入力欄へはこの日本語を入れる。select/radio は normalize.ts の同義語で照合） */
+export const ACCOUNT_TYPE_LABELS: Record<Exclude<AccountType, ''>, string> = {
+  ordinary: '普通',
+  current: '当座',
+  savings: '貯蓄',
+};
+
+export function accountTypeToText(value: AccountType): string {
+  return value ? ACCOUNT_TYPE_LABELS[value] : '';
+}
+
+/** SNS のプロフィール URL の組み立て。`@` はサービスの慣習に合わせる */
+const SNS_URL_BUILDERS: Record<SnsFieldKey, (handle: string) => string> = {
+  sns_x: (h) => `https://x.com/${h}`,
+  sns_youtube: (h) => `https://www.youtube.com/@${h}`,
+  sns_instagram: (h) => `https://www.instagram.com/${h}`,
+  sns_facebook: (h) => `https://www.facebook.com/${h}`,
+  sns_tiktok: (h) => `https://www.tiktok.com/@${h}`,
+  sns_github: (h) => `https://github.com/${h}`,
+  sns_linkedin: (h) => `https://www.linkedin.com/in/${h}`,
+  sns_note: (h) => `https://note.com/${h}`,
+};
+
+export function isSnsFieldKey(key: string): key is SnsFieldKey {
+  return Object.prototype.hasOwnProperty.call(SNS_URL_BUILDERS, key);
+}
+
+function isUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim());
+}
+
+/** 保存値から `@` と前後空白を除いたハンドル。URL が保存されている場合は末尾のパスセグメントを使う */
+export function snsHandle(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (isUrl(trimmed)) {
+    try {
+      const segments = new URL(trimmed).pathname.split('/').filter(Boolean);
+      const last = segments[segments.length - 1] ?? '';
+      return last.replace(/^@/, '');
+    } catch {
+      return '';
+    }
+  }
+  return trimmed.replace(/^@/, '');
+}
+
+/** SNS 項目の値をプロフィール URL に整形する。保存値がすでに URL ならそのまま返す */
+export function snsProfileUrl(key: SnsFieldKey, value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (isUrl(trimmed)) return trimmed;
+  const handle = snsHandle(trimmed);
+  return handle ? SNS_URL_BUILDERS[key](handle) : '';
+}
+
+/** フィールドが URL を要求しているか（type=url、ラベル / placeholder / name に URL・http） */
+export function wantsUrl(field: { type?: string; label?: string; placeholder?: string; name?: string }): boolean {
+  if (field.type === 'url') return true;
+  const text = `${field.label ?? ''} ${field.placeholder ?? ''} ${field.name ?? ''}`;
+  return /url|https?:\/\/|リンク|link/i.test(text);
 }
 
 const BIRTH_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -122,6 +262,8 @@ export interface DeriveContext {
   placeholder?: string;
   /** age 計算の基準日時（テスト用に注入可能） */
   now?: Date;
+  /** ユーザー定義項目の値（id → value）。resolve 側でプロフィールから組み立てて渡す */
+  customValues?: Record<string, string>;
 }
 
 /**
@@ -133,6 +275,7 @@ export function resolveProfileFieldValue(
   fields: ProfileFields,
   context: DeriveContext = {},
 ): string {
+  if (isCustomFieldKey(key)) return context.customValues?.[key] ?? '';
   switch (key as DerivedFieldKey | keyof ProfileFields | 'none') {
     case 'full_name':
       return deriveFullName(fields, context.placeholder);
@@ -142,6 +285,10 @@ export function resolveProfileFieldValue(
       return deriveFullNameRomaji(fields);
     case 'address_full':
       return deriveAddressFull(fields);
+    case 'prefecture_kana':
+      return derivePrefectureKana(fields.prefecture);
+    case 'address_kana_full':
+      return deriveAddressKanaFull(fields);
     case 'birth_year':
       return deriveBirthYear(fields.birth_date);
     case 'birth_month':
@@ -152,6 +299,12 @@ export function resolveProfileFieldValue(
       const age = calculateAge(fields.birth_date, context.now);
       return age === null ? '' : String(age);
     }
+    case 'account_holder_kana':
+      return deriveFullNameKana(fields, context.placeholder);
+    case 'account_holder':
+      return deriveFullName(fields, context.placeholder);
+    case 'account_type':
+      return accountTypeToText(fields.account_type);
     case 'none':
       return '';
     default:

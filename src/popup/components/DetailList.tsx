@@ -17,7 +17,7 @@ export const DetailList = ({ details, t }: Props) => {
         <li key={d.fieldId} className="detail-list__item">
           <span className="detail-list__label">{d.label || d.fieldId}</span>
           <span className="detail-list__status">
-            {d.choice && d.choice !== 'none' ? d.choice : t('popup.detailNoChoice')} ·{' '}
+            {d.choice && d.choice !== 'none' ? (d.choiceLabel ?? d.choice) : t('popup.detailNoChoice')} ·{' '}
             {t(`outcome.${d.reason}` as MessageKey)}
           </span>
         </li>

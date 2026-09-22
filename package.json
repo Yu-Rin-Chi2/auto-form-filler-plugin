@@ -1,6 +1,6 @@
 {
   "name": "auto-form-filler-plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -18,7 +18,10 @@
     "poc": "tsx poc/run.ts",
     "poc:ping": "tsx poc/ping.ts",
     "poc:env": "node --env-file=.env --import tsx poc/run.ts",
-    "poc:ping:env": "node --env-file=.env --import tsx poc/ping.ts"
+    "poc:ping:env": "node --env-file=.env --import tsx poc/ping.ts",
+    "package": "npm run build && node scripts/package.mjs",
+    "store-screenshots": "npm run build && tsx e2e/patch-manifest-for-e2e.ts && tsx scripts/store-screenshots.ts",
+    "render-promo": "node scripts/render-promo.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",
@@ -28,6 +31,7 @@
     "@playwright/test": "^1.48.0",
     "@types/chrome": "^0.0.287",
     "@types/node": "^22.0.0",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",

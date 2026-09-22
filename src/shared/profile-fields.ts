@@ -1,4 +1,4 @@
-import type { ProfileFieldKey } from './types';
+import type { CustomField, ProfileFieldKey } from './types';
 
 /**
  * Jev に送るプロフィール項目の説明（英語）。
@@ -27,16 +27,64 @@ export const PROFILE_FIELD_DESCRIPTIONS: Record<ProfileFieldKey, string> = {
   address_line1: 'Street address, block and house number（町名・番地）',
   address_line2: 'Building name, floor, room number（建物名・部屋番号）',
   address_full: 'Full address in a single field（住所 全体）',
+  prefecture_kana: 'Prefecture reading in katakana（都道府県のカナ・フリガナ）',
+  city_kana: 'City, ward, town, village reading in katakana（市区町村のカナ・フリガナ）',
+  address_line1_kana: 'Street address, block and house number reading in katakana（町名・番地のカナ・フリガナ）',
+  address_line2_kana: 'Building name, floor, room number reading in katakana（建物名・部屋番号のカナ・フリガナ）',
+  address_kana_full: 'Full address reading in katakana in a single field（住所のカナ・フリガナ 全体）',
   country: 'Country（国）',
   company: 'Company / organization name（会社名・団体名）',
   department: 'Department / division（部署名）',
+  website: 'Website / homepage URL（ホームページ・会社サイトの URL）',
   birth_date: 'Date of birth as a single field（生年月日）',
   birth_year: 'Birth year（生年月日の年）',
   birth_month: 'Birth month（生年月日の月）',
   birth_day: 'Birth day of month（生年月日の日）',
   age: 'Age in years（年齢）',
   gender: 'Gender（性別）',
+  bank_name: 'Bank / financial institution name（銀行名・金融機関名）',
+  bank_code: 'Bank code, 4 digits（銀行コード・金融機関コード）',
+  branch_name: 'Bank branch name（支店名）',
+  branch_code: 'Bank branch code / branch number, 3 digits（支店コード・店番）',
+  account_type: 'Bank account type: 普通 (ordinary) / 当座 (current) / 貯蓄 (savings)（預金種別・口座種別）',
+  account_number: 'Bank account number, usually 7 digits（口座番号）',
+  account_holder_kana: 'Bank account holder name in katakana（口座名義・口座名義人 カナ）',
+  account_holder: 'Bank account holder name in kanji（口座名義人 漢字）',
+  sns_x: 'X (Twitter) account ID / handle or profile URL（X・Twitter のアカウント ID・URL）',
+  sns_youtube: 'YouTube channel handle or channel URL（YouTube のチャンネル ID・URL）',
+  sns_instagram: 'Instagram account ID or profile URL（Instagram のアカウント ID・URL）',
+  sns_facebook: 'Facebook account / page ID or profile URL（Facebook のアカウント ID・URL）',
+  sns_tiktok: 'TikTok account ID or profile URL（TikTok のアカウント ID・URL）',
+  sns_github: 'GitHub username or profile URL（GitHub のユーザー名・URL）',
+  sns_linkedin: 'LinkedIn profile ID or profile URL（LinkedIn のプロフィール ID・URL）',
+  sns_note: 'note.com (Japanese blogging platform) account ID or profile URL（note のアカウント ID・URL）',
   none: 'No profile value fits: free-form text, a question, a consent checkbox, a preference, or not personal information',
 };
 
 export const PROFILE_FIELD_KEYS_FOR_JEV = Object.keys(PROFILE_FIELD_DESCRIPTIONS) as ProfileFieldKey[];
+
+/**
+ * ユーザー定義項目の Jev 向け説明文。label（必須）と description（任意）だけを使い、value は含めない。
+ * label が空の項目は Jev に提示しない（判定のしようがないため）。
+ */
+export function describeCustomField(field: CustomField): string | null {
+  const label = field.label.trim();
+  if (!label) return null;
+  const description = field.description.trim();
+  return description ? `User-defined entry "${label}": ${description}` : `User-defined entry "${label}"`;
+}
+
+/**
+ * 固定項目 + ユーザー定義項目 の説明（Jev の `state.profile`）。`none` は末尾に置く
+ * （選択肢の並びを固定項目 → ユーザー定義 → none に保つため）。
+ */
+export function buildProfileDescriptions(customFields: CustomField[] = []): Record<string, string> {
+  const { none, ...fixed } = PROFILE_FIELD_DESCRIPTIONS;
+  const out: Record<string, string> = { ...fixed };
+  for (const c of customFields) {
+    const text = describeCustomField(c);
+    if (text) out[c.id] = text;
+  }
+  out.none = none;
+  return out;
+}

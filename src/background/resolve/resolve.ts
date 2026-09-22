@@ -3,8 +3,18 @@
  * 各フィールドに入れる値（または入れない理由）を決定する。純粋関数のみ。DOM・storage に依存させない。
  */
 import { katakanaToHiragana, shouldConvertToHiragana } from '../../shared/kana';
-import { parseBirthDate, resolveProfileFieldValue, splitByHyphen, splitPhoneForFieldCount } from '../../shared/derive';
+import {
+  isSnsFieldKey,
+  parseBirthDate,
+  resolveProfileFieldValue,
+  snsProfileUrl,
+  splitByHyphen,
+  splitPhoneForFieldCount,
+  wantsUrl,
+} from '../../shared/derive';
+import { isCustomFieldKey } from '../../shared/types';
 import type {
+  CustomField,
   ExtractedField,
   ExtractedFields,
   FieldOutcome,
@@ -14,6 +24,7 @@ import type {
   ProfileFields,
 } from '../../shared/types';
 import {
+  matchAccountType,
   matchCountry,
   matchGender,
   matchMonthOrDay,
@@ -36,6 +47,8 @@ export interface ResolveInput {
   fields: ExtractedFields;
   answers: Record<string, AnswerLike | undefined>;
   profileFields: ProfileFields;
+  /** ユーザー定義項目（値の解決と、詳細表示用の表示名に使う） */
+  customFields?: CustomField[];
   settings: ResolveSettings;
   /** age 計算などの基準時刻（テスト用に注入可能） */
   now?: Date;
@@ -48,7 +61,17 @@ export interface ResolveOutput {
 
 /** DOM 順で連続する場合に分割対象となる項目（要件 5.3 手順4） */
 const SPLIT_GROUP_KEYS = new Set<string>(['phone', 'postal_code']);
-const KANA_CHOICE_KEYS = new Set<string>(['family_name_kana', 'given_name_kana', 'full_name_kana']);
+const KANA_CHOICE_KEYS = new Set<string>([
+  'family_name_kana',
+  'given_name_kana',
+  'full_name_kana',
+  'account_holder_kana',
+  'prefecture_kana',
+  'city_kana',
+  'address_line1_kana',
+  'address_line2_kana',
+  'address_kana_full',
+]);
 
 interface Decision {
   id: string;
@@ -59,8 +82,16 @@ interface Decision {
   gatedReason?: FieldOutcomeReason;
 }
 
-function outcome(d: Decision, reason: FieldOutcomeReason): FieldOutcome {
-  return { fieldId: d.id, label: d.field.label, choice: d.choice, confidence: d.confidence, reason };
+function outcome(d: Decision, reason: FieldOutcomeReason, customLabels?: Record<string, string>): FieldOutcome {
+  const choiceLabel = d.choice && isCustomFieldKey(d.choice) ? customLabels?.[d.choice] : undefined;
+  return {
+    fieldId: d.id,
+    label: d.field.label,
+    choice: d.choice,
+    ...(choiceLabel ? { choiceLabel } : {}),
+    confidence: d.confidence,
+    reason,
+  };
 }
 
 function isCheckbox(field: ExtractedField): boolean {
@@ -89,6 +120,8 @@ function matchForChoice(
       return matchMonthOrDay(rawValue, options);
     case 'gender':
       return matchGender(profileFields.gender, options);
+    case 'account_type':
+      return matchAccountType(profileFields.account_type, options);
     case 'country':
       return matchCountry(rawValue, options);
     default:
@@ -100,13 +133,17 @@ function matchForChoice(
 function formatForFieldType(
   rawValue: string,
   choiceKey: ProfileFieldKey,
-  fieldType: string | undefined,
+  field: ExtractedField,
   profileFields: ProfileFields,
 ): string {
-  if (choiceKey === 'birth_date' && fieldType === 'month') {
+  if (choiceKey === 'birth_date' && field.type === 'month') {
     const parts = parseBirthDate(profileFields.birth_date);
     if (!parts) return '';
     return `${parts.year}-${String(parts.month).padStart(2, '0')}`;
+  }
+  // SNS: URL を求める欄にはプロフィール URL、それ以外は保存値（ID）をそのまま
+  if (isSnsFieldKey(choiceKey) && wantsUrl(field)) {
+    return snsProfileUrl(choiceKey, rawValue);
   }
   return rawValue;
 }
@@ -167,6 +204,12 @@ function buildSplitGroups(decisions: Decision[]): Map<string, Decision[]> {
 export function resolveFill(input: ResolveInput): ResolveOutput {
   const { fields, answers, profileFields, settings, now } = input;
   const ids = Object.keys(fields);
+  const customValues: Record<string, string> = {};
+  const customLabels: Record<string, string> = {};
+  for (const c of input.customFields ?? []) {
+    customValues[c.id] = c.value;
+    customLabels[c.id] = c.label;
+  }
 
   const decisions: Decision[] = ids.map((id) => {
     const field = fields[id] as ExtractedField;
@@ -180,7 +223,7 @@ export function resolveFill(input: ResolveInput): ResolveOutput {
 
   for (const d of decisions) {
     if (d.gatedReason) {
-      outcomes.push(outcome(d, d.gatedReason));
+      outcomes.push(outcome(d, d.gatedReason, customLabels));
       continue;
     }
     const choiceKey = d.choice as ProfileFieldKey;
@@ -188,7 +231,7 @@ export function resolveFill(input: ResolveInput): ResolveOutput {
 
     let rawValue: string;
     if (group) {
-      const wholeValue = resolveProfileFieldValue(choiceKey, profileFields, { now });
+      const wholeValue = resolveProfileFieldValue(choiceKey, profileFields, { now, customValues });
       const parts =
         choiceKey === 'phone' ? splitPhoneForFieldCount(wholeValue, group.length) : splitByHyphen(wholeValue);
       const idx = group.indexOf(d);
@@ -196,23 +239,23 @@ export function resolveFill(input: ResolveInput): ResolveOutput {
         if (idx === 0) {
           rawValue = wholeValue;
         } else {
-          outcomes.push(outcome(d, 'skipped_split_mismatch'));
+          outcomes.push(outcome(d, 'skipped_split_mismatch', customLabels));
           continue;
         }
       } else {
         rawValue = parts[idx] ?? '';
       }
     } else {
-      rawValue = resolveProfileFieldValue(choiceKey, profileFields, { placeholder: d.field.placeholder, now });
+      rawValue = resolveProfileFieldValue(choiceKey, profileFields, { placeholder: d.field.placeholder, now, customValues });
     }
 
     if (!rawValue) {
-      outcomes.push(outcome(d, 'skipped_unset'));
+      outcomes.push(outcome(d, 'skipped_unset', customLabels));
       continue;
     }
 
     if (d.field.currentValue === 'filled' && !settings.overwriteFilled) {
-      outcomes.push(outcome(d, 'skipped_existing_value'));
+      outcomes.push(outcome(d, 'skipped_existing_value', customLabels));
       continue;
     }
 
@@ -223,28 +266,28 @@ export function resolveFill(input: ResolveInput): ResolveOutput {
       const options = d.field.options ?? [];
       const matched = matchForChoice(choiceKey, rawValue, options, profileFields);
       if (matched === null) {
-        outcomes.push(outcome(d, 'skipped_no_option_match'));
+        outcomes.push(outcome(d, 'skipped_no_option_match', customLabels));
         continue;
       }
       assignment = { kind: selectKind, value: matched };
     } else {
-      let value = formatForFieldType(rawValue, choiceKey, d.field.type, profileFields);
+      let value = formatForFieldType(rawValue, choiceKey, d.field, profileFields);
       if (!value) {
-        outcomes.push(outcome(d, 'skipped_unset'));
+        outcomes.push(outcome(d, 'skipped_unset', customLabels));
         continue;
       }
       if (KANA_CHOICE_KEYS.has(choiceKey) && shouldConvertToHiragana(d.field.label)) {
         value = katakanaToHiragana(value);
       }
       if (d.field.maxlength !== undefined && value.length > d.field.maxlength) {
-        outcomes.push(outcome(d, 'skipped_max_length'));
+        outcomes.push(outcome(d, 'skipped_max_length', customLabels));
         continue;
       }
       assignment = { kind: 'text', value };
     }
 
     assignments[d.id] = assignment;
-    outcomes.push(outcome(d, 'filled'));
+    outcomes.push(outcome(d, 'filled', customLabels));
   }
 
   return { assignments, outcomes };

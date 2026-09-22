@@ -4,7 +4,7 @@
  * 一致の優先順位: 完全一致 → 正規化一致 → 前方一致（一意な場合のみ）。
  * Jev へのフォールバックは行わない（一致しなければ null＝スキップ、要件 P1）。
  */
-import type { Gender } from '../../shared/types';
+import type { AccountType, Gender } from '../../shared/types';
 
 // ---------------------------------------------------------------------------
 // 共通正規化: trim・全角英数→半角・半角カナ→全角カナ・空白除去・大文字小文字無視
@@ -172,6 +172,21 @@ const GENDER_SYNONYMS: Record<Exclude<Gender, ''>, string[]> = {
 export function matchGender(value: Gender, options: string[]): string | null {
   if (!value) return null;
   return matchCandidates([value, ...GENDER_SYNONYMS[value]], options);
+}
+
+// ---------------------------------------------------------------------------
+// 預金種別: 「普通」「普通預金」「Ordinary」「Savings（普通の英訳として使われる）」等を吸収
+// ---------------------------------------------------------------------------
+
+const ACCOUNT_TYPE_SYNONYMS: Record<Exclude<AccountType, ''>, string[]> = {
+  ordinary: ['普通', '普通預金', 'ふつう', 'Ordinary', 'Savings', 'Futsu'],
+  current: ['当座', '当座預金', 'とうざ', 'Current', 'Checking', 'Toza'],
+  savings: ['貯蓄', '貯蓄預金', 'ちょちく', 'Chochiku'],
+};
+
+export function matchAccountType(value: AccountType, options: string[]): string | null {
+  if (!value) return null;
+  return matchCandidates(ACCOUNT_TYPE_SYNONYMS[value], options);
 }
 
 // ---------------------------------------------------------------------------

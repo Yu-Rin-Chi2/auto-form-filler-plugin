@@ -37,6 +37,9 @@ npm install
 | `npm run test` | vitest による単体テスト・DOM テスト |
 | `npm run e2e` | ビルド後、Playwright で拡張をロードした E2E テストを実行 |
 | `npm run render-icons` | `public/icons/` のアイコン PNG を再生成 |
+| `npm run package` | ビルド後、Web Store / GitHub Release 提出用の zip を `release/` に生成 |
+| `npm run store-screenshots` | Web Store 掲載用スクリーンショット（1280×800）を `docs/store/screenshots/` に生成（Jev はモック） |
+| `npm run render-promo` | Web Store 用プロモタイル（440×280）を `docs/store/promo/` に生成 |
 
 ### ディレクトリ構成
 
@@ -68,13 +71,16 @@ docs/              requirements/, research/, test-scenarios/
 
 ## リリース物を作るときの注意
 
-- Chrome Web Store に提出するのは `npm run build` が生成する `dist/` を zip したものだけです。
+- Chrome Web Store に提出するのは `npm run package` が生成する
+  `release/auto-form-filler-v<version>.zip`（`dist/` の中身）だけです。
+  `package` は `manifest.json` の `host_permissions` が Jev API の 2 ホストのみであることを検査し、
+  それ以外が含まれていれば失敗します。
+- 掲載文・権限の説明・審査者向けメモは [docs/store/listing.md](docs/store/listing.md) にまとめています。
 - `npm run e2e` は `dist/` をコピーした `dist-e2e/` にローカルモックサーバー向けの
   `host_permissions` を追加してから拡張をロードします。`dist-e2e/` は E2E 専用のビルドで
   あり、`dist/` 自体は変更されません。**`dist-e2e/` は提出物に含めないでください。**
-- 提出前に `dist/manifest.json` の `host_permissions` が `api.typesafe.ai` /
-  `openrouter.ai` の 2 件のみであることを確認してください（`npm run e2e` を実行しても
-  `dist/` は変更されない設計ですが、念のため zip 化前に目視確認してください）。
+- バージョンを上げるときは `package.json` の `version` を変更し（`manifest.json` はビルド時に同期）、
+  `CHANGELOG.md` にエントリを追加してください。
 
 ## バグ報告
 

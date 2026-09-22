@@ -153,6 +153,18 @@ body {
   text-align: center;
 }
 
+.popup__donate {
+  align-self: center;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.popup__donate:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
 .summary-card {
   background: var(--color-surface);
   border-radius: 8px;

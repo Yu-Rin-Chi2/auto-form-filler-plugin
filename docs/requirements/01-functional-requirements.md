@@ -95,6 +95,33 @@ interface Profile {
 | `city` | string | 千代田区 | |
 | `address_line1` | string | 千代田1-1-1 | 町名・番地 |
 | `address_line2` | string | サンプルマンション101 | 建物名・部屋番号 |
+| `city_kana` | string | チヨダク | 市区町村のカナ。金融・決済系フォーム（Stripe Connect 等）の住所カナ欄向け（2026-09-22 追加） |
+| `address_line1_kana` | string | チヨダ1-1-1 | 町名・番地のカナ |
+| `address_line2_kana` | string | サンプルマンション101 | 建物名・部屋番号のカナ |
+| `website` | string | https://example.com | ホームページ・会社サイトの URL（2026-09-22 追加） |
+| `bank_name` | string | 三菱UFJ銀行 | 銀行口座（振込先・売上入金口座フォーム向け。2026-09-22 追加。カード情報は引き続きスコープ外） |
+| `bank_code` | string | 0005 | 金融機関コード 4 桁 |
+| `branch_name` | string | 渋谷支店 | 支店名 |
+| `branch_code` | string | 135 | 支店コード・店番 3 桁 |
+| `account_type` | `'ordinary' \| 'current' \| 'savings' \| ''` | ordinary | 預金種別。テキスト欄には「普通 / 当座 / 貯蓄」、select/radio は同義語（普通預金・Savings・ふつう 等）で照合 |
+| `account_number` | string | 1234567 | 口座番号（通常 7 桁） |
+| `sns_x` / `sns_youtube` / `sns_instagram` / `sns_facebook` / `sns_tiktok` / `sns_github` / `sns_linkedin` / `sns_note` | string | @yamada / https://github.com/yamada | SNS のアカウント ID または URL（2026-09-22 追加）。URL 欄（`type=url`、ラベル/placeholder/name に URL・http・リンク）には各サービスのプロフィール URL に変換して入力、それ以外は保存値のまま |
+
+#### 2.3.1 ユーザー定義項目（`Profile.customFields`、2026-09-22 追加）
+
+固定スキーマにない項目（SNS の ID、社員番号、資格番号など）をユーザーが追加できる。
+
+| フィールド | 型 | 説明 |
+|---|---|---|
+| `id` | `` `custom_${string}` `` | `custom_` + ランダム 8 文字。Jev の choice キーとしてそのまま使う |
+| `label` | string | 表示名。Jev への説明にも使う。空なら Jev に提示しない |
+| `description` | string | 任意の補足。Jev への説明にのみ使う（英語推奨） |
+| `value` | string | 入力する値。**Jev には送らない** |
+
+- Jev への `state.profile` は「固定項目 + ユーザー定義項目（`User-defined entry "<label>": <description>`）+ none」の順で組み立てる（`buildProfileDescriptions`）
+- 回答検証の criteria キー一覧もプロフィールごとに動的に組む
+- ポップアップの詳細表示では `custom_xxxx` ではなく `label` を出す（`FieldOutcome.choiceLabel`）
+- 旧データ（`customFields` なし）は読み込み時に `[]` で補う
 | `country` | string | 日本 | |
 | `company` | string | | |
 | `department` | string | | |
@@ -109,6 +136,10 @@ interface Profile {
 | `full_name_kana` | family_name_kana + given_name_kana | 同上 |
 | `full_name_romaji` | given_name_romaji + family_name_romaji | 英語順 |
 | `address_full` | prefecture + city + address_line1 + address_line2 | 区切りなし連結 |
+| `prefecture_kana` | prefecture → 47 都道府県の固定表 | 「東京」「東京都」どちらの表記でも解決。表にない値は未設定扱い |
+| `address_kana_full` | prefecture_kana + city_kana + address_line1_kana + address_line2_kana | 区切りなし連結。ラベルが「ふりがな／ひらがな」ならひらがな変換（氏名カナと同じ規則） |
+| `account_holder_kana` | = full_name_kana | 口座名義（カナ）。銀行フォームは通常カナ名義を要求する |
+| `account_holder` | = full_name | 口座名義（漢字） |
 | `birth_year` / `birth_month` / `birth_day` | birth_date | 数値。select の選択肢に合わせて「1990」「1990年」「01」「1」を吸収 |
 | `age` | birth_date | 実行時点の満年齢 |
 | `phone` の分割 | phone | ハイフンで分割。3 分割フォームなら 3 パーツ、2 分割なら先頭と残り |
@@ -222,7 +253,7 @@ sequenceDiagram
 | `input[type=password]` | P3 |
 | `input[type=file]`, `hidden`, `submit`, `button`, `image`, `reset` | 入力対象でない |
 | `autocomplete` が `cc-` で始まる | カード情報（P3） |
-| ラベル／name が `カード番号|card.?number|cvv|cvc|セキュリティコード|有効期限` に一致 | `autocomplete` のないカード欄 |
+| ラベル／name が `カード番号|card.?number|cvv|cvc|セキュリティコード|有効期限|暗証番号|暗証|\bpin\b|passcode` に一致 | `autocomplete` のないカード欄、暗証番号（PIN）欄（2026-09-22 追加）。銀行口座（口座番号・支店コード）は除外しない |
 | `readonly`, `disabled` | 入力不可 |
 | 非表示（`checkVisibility()` false、サイズ 0、`aria-hidden` 祖先） | ユーザーに見えない |
 | `input[type=search]` でフォーム外 | サイト内検索 |
@@ -329,7 +360,8 @@ PoC の `keyed` バリアントに準拠。
 | フィールド 0 件 | 「入力できるフォームが見つかりません」 |
 | `chrome://` 等の注入不可ページ | 「このページでは使えません」 |
 | 回答の検証失敗 | 1 回再送。再失敗で「判定結果が不正です」 |
-| iframe 内フォーム | MVP では最上位フレームのみ。`allFrames` は Should |
+| フィールド 0 件だが可視な別オリジン iframe がある | 「フォームは別サイトの枠（iframe）内にあります」＋「許可して再実行」ボタン。押すと `permissions.request` でその iframe のオリジンを許可し再実行（2026-09-22、Stripe Connect のホスト型オンボーディングで判明） |
+| iframe 内フォーム | `allFrames: true` で全フレームに注入し、フレームごとの抽出結果を通し ID で統合して 1 リクエストにまとめる。入力はフレーム別に分配、トーストは最上位フレームのみ。未許可のクロスオリジン iframe は上記の権限案内へ |
 
 ## 6. 権限とマニフェスト
 
@@ -339,6 +371,8 @@ PoC の `keyed` バリアントに準拠。
   "default_locale": "ja",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["https://api.typesafe.ai/*", "https://openrouter.ai/*"],
+  // 既定は無効。クロスオリジン iframe 内のフォーム向けに、ユーザーが許可したオリジンのみ実行時に有効化
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
   "action": { "default_popup": "popup.html" },
   "options_page": "options.html",
   "background": { "service_worker": "background.js", "type": "module" },
@@ -350,7 +384,7 @@ PoC の `keyed` バリアントに準拠。
 
 - `content_scripts` は宣言しない（実行時注入）
 - `tabs` 権限は不要（`activeTab` で URL・タイトルを取得できる）
-- `<all_urls>` は使わない
+- `<all_urls>` は固定権限としては使わない。`optional_host_permissions` は「許可して再実行」をユーザーが押したオリジン 1 件ずつにしか実際の権限を付与しない
 
 ## 7. i18n
 

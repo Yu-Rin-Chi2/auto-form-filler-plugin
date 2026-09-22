@@ -1,0 +1,100 @@
+<!doctype html>
+<!--
+  ストア掲載スクリーンショット用のデモフォーム（架空の EC 会員登録）。
+  scripts/store-screenshots.ts がローカルモックサーバー上のページに差し込んで撮影する。
+  実サービスのブランドは使わない。
+-->
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>会員登録 | サンプルストア</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif; color: #1f2937; background: #f3f4f6; }
+    header { background: #fff; border-bottom: 1px solid #e5e7eb; }
+    .header-inner { max-width: 880px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+    .logo { width: 28px; height: 28px; border-radius: 6px; background: #111827; }
+    .brand { font-weight: 600; font-size: 16px; }
+    main { max-width: 880px; margin: 28px auto; padding: 0 24px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    .lead { color: #6b7280; margin: 0 0 24px; font-size: 14px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 22px 24px; margin-bottom: 18px; }
+    h2 { font-size: 15px; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid #f3f4f6; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; margin-bottom: 14px; }
+    .row.full { grid-template-columns: 1fr; }
+    label.field { display: block; font-size: 13px; color: #374151; }
+    label.field span.req { color: #dc2626; margin-left: 4px; font-size: 11px; }
+    input[type="text"], input[type="email"], input[type="tel"], select {
+      display: block; width: 100%; margin-top: 6px; padding: 9px 11px; font-size: 14px;
+      border: 1px solid #d1d5db; border-radius: 6px; background: #fff; color: #111827;
+    }
+    .inline { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+    .inline select { width: auto; margin-top: 0; }
+    .radios { display: flex; gap: 18px; margin-top: 8px; font-size: 14px; }
+    .radios label { display: flex; gap: 6px; align-items: center; }
+    .check { font-size: 14px; display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+    .actions { display: flex; justify-content: flex-end; }
+    button.submit { background: #111827; color: #fff; border: 0; border-radius: 6px; padding: 11px 26px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header><div class="header-inner"><div class="logo"></div><div class="brand">サンプルストア</div></div></header>
+  <main>
+    <h1>会員登録</h1>
+    <p class="lead">必要事項をご入力ください。<span style="color:#dc2626">*</span> は必須項目です。</p>
+    <form action="#" onsubmit="return false;">
+      <section class="card">
+        <h2>お客様情報</h2>
+        <div class="row">
+          <label class="field">姓<span class="req">*</span><input type="text" name="last_name" autocomplete="family-name" placeholder="例: 山田" required /></label>
+          <label class="field">名<span class="req">*</span><input type="text" name="first_name" autocomplete="given-name" placeholder="例: 太郎" required /></label>
+        </div>
+        <div class="row">
+          <label class="field">セイ<span class="req">*</span><input type="text" name="last_name_kana" placeholder="例: ヤマダ" required /></label>
+          <label class="field">メイ<span class="req">*</span><input type="text" name="first_name_kana" placeholder="例: タロウ" required /></label>
+        </div>
+        <div class="row">
+          <label class="field">メールアドレス<span class="req">*</span><input type="email" name="email" autocomplete="email" placeholder="example@example.com" required /></label>
+          <label class="field">電話番号<span class="req">*</span><input type="tel" name="tel" autocomplete="tel" placeholder="09012345678" required /></label>
+        </div>
+        <div class="row">
+          <label class="field">生年月日
+            <div class="inline">
+              <select name="birth_year" autocomplete="bday-year"><option value="">年</option><option>1985</option><option>1986</option><option>1987</option><option>1988</option><option>1989</option><option>1990</option><option>1991</option><option>1992</option><option>1993</option><option>1994</option><option>1995</option></select>
+              <select name="birth_month" autocomplete="bday-month"><option value="">月</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select>
+              <select name="birth_day" autocomplete="bday-day"><option value="">日</option><option>1</option><option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option></select>
+            </div>
+          </label>
+          <div class="field"><label class="field">性別</label>
+            <div class="radios">
+              <label><input type="radio" name="gender" value="male" />男性</label>
+              <label><input type="radio" name="gender" value="female" />女性</label>
+              <label><input type="radio" name="gender" value="none" />回答しない</label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>お届け先</h2>
+        <div class="row">
+          <label class="field">郵便番号<span class="req">*</span><input type="text" name="zip" autocomplete="postal-code" placeholder="1000001" required /></label>
+          <label class="field">都道府県<span class="req">*</span>
+            <select name="pref" autocomplete="address-level1" required><option value="">選択してください</option><option>北海道</option><option>神奈川県</option><option>東京都</option><option>大阪府</option><option>愛知県</option><option>福岡県</option></select>
+          </label>
+        </div>
+        <div class="row">
+          <label class="field">市区町村<span class="req">*</span><input type="text" name="city" autocomplete="address-level2" placeholder="例: 千代田区" required /></label>
+          <label class="field">番地<span class="req">*</span><input type="text" name="address1" autocomplete="address-line1" placeholder="例: 千代田1-1-1" required /></label>
+        </div>
+        <div class="row full">
+          <label class="field">建物名・部屋番号<input type="text" name="address2" autocomplete="address-line2" placeholder="例: サンプルマンション101" /></label>
+        </div>
+        <label class="check"><input type="checkbox" name="mailmag" />お得な情報をメールで受け取る</label>
+      </section>
+
+      <div class="actions"><button type="button" class="submit">確認画面へ</button></div>
+    </form>
+  </main>
+</body>
+</html>

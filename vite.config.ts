@@ -18,6 +18,9 @@ export default defineConfig({
   build: {
     outDir: resolvePath('dist'),
     emptyOutDir: true,
+    // <link rel="modulepreload"> を出さない。拡張ページ（chrome-extension://）では Chrome が
+    // 「preload されたが数秒以内に使われなかった」警告を拡張のエラー一覧に記録するため
+    modulePreload: false,
     rollupOptions: {
       input: {
         popup: resolvePath('src/popup.html'),

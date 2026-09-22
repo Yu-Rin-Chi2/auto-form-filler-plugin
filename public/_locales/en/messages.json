@@ -4,7 +4,7 @@
     "description": "Extension name"
   },
   "ext_description": {
-    "message": "Uses Jev to identify form fields and auto-fill them from a profile stored only on your device. Your personal data never leaves your device.",
+    "message": "Uses Jev to identify form fields and fills them from a profile stored only on your device. Your personal data never leaves it.",
     "description": "Extension description (store listing)"
   },
   "cmd_fill": {

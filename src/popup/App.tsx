@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { MessageKey } from '../shared/i18n';
 import { useLocale } from '../shared/useLocale';
 import { hostFromUrl, timeAgo } from '../shared/format';
+import { originToHost, requestFrameOrigins } from '../shared/frame-permissions';
+import { DONATE_URL } from '../shared/links';
 import type { JevErrorKind } from '../shared/types';
 import { DetailList } from './components/DetailList';
 import { usePopupState } from './hooks/usePopupState';
@@ -17,6 +19,7 @@ const ERROR_KEY_MAP: Record<JevErrorKind, MessageKey> = {
   no_fields: 'popup.error.no_fields',
   unsupported_page: 'popup.error.unsupported_page',
   incomplete: 'popup.error.incomplete',
+  frame_permission_needed: 'popup.error.frame_permission_needed',
   unknown: 'popup.error.unknown',
 };
 
@@ -24,6 +27,7 @@ export const App = () => {
   const { t, locale } = useLocale();
   const state = usePopupState();
   const [showDetail, setShowDetail] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
 
   const header = (
     <header className="popup__header">
@@ -88,6 +92,17 @@ export const App = () => {
 
   const { result, details, running, profiles, selectedProfileId, setSelectedProfileId, runFill } = state;
   const hasError = Boolean(result?.error);
+  const pendingOrigins = result?.pendingFrameOrigins ?? [];
+  const pendingHosts = pendingOrigins.map(originToHost).join(', ');
+
+  // 「許可して再実行」: Chrome の権限ダイアログはユーザー操作起点でしか出せないため、
+  // ポップアップのクリックハンドラ内で直接 permissions.request を呼び、許可されたら再実行する
+  const allowFramesAndRerun = async () => {
+    setPermissionDenied(false);
+    const granted = await requestFrameOrigins(pendingOrigins);
+    if (granted) await runFill();
+    else setPermissionDenied(true);
+  };
 
   return (
     <div className="popup">
@@ -136,6 +151,15 @@ export const App = () => {
       {!running && result && hasError && (
         <div className="summary-card" role="alert" aria-live="polite">
           <p className="summary-card__error">✕ {t(ERROR_KEY_MAP[result.errorKind ?? 'unknown'])}</p>
+          {result.errorKind === 'frame_permission_needed' && pendingOrigins.length > 0 && (
+            <>
+              <p className="summary-card__line">{t('popup.framePermissionBody', { hosts: pendingHosts })}</p>
+              <button type="button" className="button button--primary" onClick={() => void allowFramesAndRerun()}>
+                {t('popup.framePermissionButton')}
+              </button>
+              {permissionDenied && <p className="summary-card__line">{t('popup.framePermissionDenied')}</p>}
+            </>
+          )}
           {result.errorKind === 'rate_limited' && (
             <a
               className="summary-card__link"
@@ -168,6 +192,15 @@ export const App = () => {
             {showDetail ? t('popup.detailHideButton') : t('popup.detailButton')}
           </button>
           {showDetail && <DetailList details={details} t={t} />}
+          {pendingOrigins.length > 0 && (
+            <>
+              <p className="summary-card__line">{t('popup.framePermissionHint', { hosts: pendingHosts })}</p>
+              <button type="button" className="summary-card__link" onClick={() => void allowFramesAndRerun()}>
+                {t('popup.framePermissionHintButton')}
+              </button>
+              {permissionDenied && <p className="summary-card__line">{t('popup.framePermissionDenied')}</p>}
+            </>
+          )}
         </div>
       )}
 
@@ -176,6 +209,10 @@ export const App = () => {
           {t('popup.lastResultMeta', { host: hostFromUrl(result.url), ago: timeAgo(result.at, locale) })}
         </p>
       )}
+
+      <a className="popup__donate" href={DONATE_URL} target="_blank" rel="noreferrer">
+        {t('support.donateLink')}
+      </a>
     </div>
   );
 };

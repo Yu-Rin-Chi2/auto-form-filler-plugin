@@ -1,0 +1,47 @@
+<!doctype html>
+<!--
+  Chrome Web Store の小プロモタイル（440×280）の元 HTML。
+  scripts/render-promo.mjs が Playwright でこのページを 440×280 で撮影して PNG にする。
+-->
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    html, body { margin: 0; width: 440px; height: 280px; overflow: hidden; }
+    body {
+      font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 60%, #3b82f6 100%);
+      color: #fff; position: relative;
+    }
+    .glyph {
+      position: absolute; left: 32px; top: 32px; width: 72px; height: 72px; border-radius: 16px;
+      background: #fff; display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+      gap: 9px; padding-left: 17px;
+    }
+    .glyph i { display: block; height: 7px; border-radius: 4px; background: #2563eb; }
+    .glyph i:nth-child(1), .glyph i:nth-child(2) { width: 38px; }
+    .glyph i:nth-child(3) { width: 24px; }
+    .title { position: absolute; left: 124px; top: 38px; font-size: 27px; font-weight: 700; letter-spacing: 0.2px; }
+    .sub { position: absolute; left: 124px; top: 76px; font-size: 13.5px; opacity: 0.92; }
+    .lines { position: absolute; left: 32px; top: 116px; right: 32px; }
+    .line { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 14.5px; }
+    .line .box { width: 190px; height: 28px; background: rgba(255,255,255,0.14); border: 1.5px solid rgba(255,255,255,0.55); border-radius: 6px; display: flex; align-items: center; padding-left: 10px; font-size: 13px; }
+    .line .lab { width: 68px; text-align: right; font-size: 12.5px; opacity: 0.85; }
+    .badge {
+      position: absolute; left: 32px; bottom: 18px; font-size: 12px; font-weight: 600;
+      background: #fff; color: #1e3a8a; border-radius: 999px; padding: 7px 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="glyph"><i></i><i></i><i></i></div>
+  <div class="title">Auto Form Filler</div>
+  <div class="sub">日本語フォームを AI 判定でワンクリック入力</div>
+  <div class="lines">
+    <div class="line"><div class="lab">姓 / 名</div><div class="box">山田　太郎</div></div>
+    <div class="line"><div class="lab">フリガナ</div><div class="box">ヤマダ　タロウ</div></div>
+    <div class="line"><div class="lab">電話番号</div><div class="box">090 - 1234 - 5678</div></div>
+  </div>
+  <div class="badge">個人情報は端末の外に出しません</div>
+</body>
+</html>

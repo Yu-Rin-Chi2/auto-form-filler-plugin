@@ -41,11 +41,19 @@ const NONE_RULE =
   "Pick `none` if no entry fits, if the field asks for free-form text, a preference, a date of an event, " +
   "a consent checkbox, or anything that is not the user's own personal information.";
 
-function buildNullCriteria(): Record<string, null> {
-  return Object.fromEntries(Object.keys(PROFILE_FIELD_DESCRIPTIONS).map((k) => [k, null]));
+function buildNullCriteria(descriptions: Record<string, string>): Record<string, null> {
+  return Object.fromEntries(Object.keys(descriptions).map((k) => [k, null]));
 }
 
-export function buildJevRequest(page: PageInfo, fields: ExtractedFields, model?: string): BuildRequestResult {
+/**
+ * @param profileDescriptions Jev に提示する項目説明（固定項目 + ユーザー定義項目）。省略時は固定項目のみ
+ */
+export function buildJevRequest(
+  page: PageInfo,
+  fields: ExtractedFields,
+  model?: string,
+  profileDescriptions: Record<string, string> = PROFILE_FIELD_DESCRIPTIONS,
+): BuildRequestResult {
   const allIds = Object.keys(fields);
   const fieldIds = allIds.slice(0, MAX_FIELDS);
   const overLimitCount = Math.max(0, allIds.length - MAX_FIELDS);
@@ -65,7 +73,7 @@ export function buildJevRequest(page: PageInfo, fields: ExtractedFields, model?:
     questions[id] = {
       type: 'choice',
       instructions: `Which profile entry should be typed or selected into \`fields.${id}\`? ${NONE_RULE} Entry meanings are in \`profile\`.`,
-      criteria: buildNullCriteria(),
+      criteria: buildNullCriteria(profileDescriptions),
     };
   }
 
@@ -75,7 +83,7 @@ export function buildJevRequest(page: PageInfo, fields: ExtractedFields, model?:
       state: {
         page: { ...page, url: normalizePageUrl(page.url) },
         fields: includedFields,
-        profile: PROFILE_FIELD_DESCRIPTIONS,
+        profile: profileDescriptions,
       },
       questions,
     },
