@@ -1,5 +1,9 @@
 # Auto Form Filler
 
+[![Latest release](https://img.shields.io/github/v/release/Yu-Rin-Chi2/auto-form-filler-plugin?label=release)](https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-ffdd00?logo=buymeacoffee&logoColor=000)](https://buymeacoffee.com/yurinchi)
+
 Jev（TypeSafe AI の判定特化モデル）でフォームの項目を判定し、ローカルに保存したプロフィールで自動入力する Chrome 拡張（Manifest V3）です。
 
 氏名・フリガナ・住所・電話番号・生年月日など、日本語フォームでよく崩れる分割入力（電話 3 分割、郵便番号 2 分割、生年月日 3 select など）にも対応します。
@@ -33,11 +37,45 @@ Jev（TypeSafe AI の判定特化モデル）でフォームの項目を判定�
 
 ### GitHub Release から読み込む（ビルド不要・推奨）
 
-1. [Releases](https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/releases) ページから最新の `auto-form-filler-vX.Y.Z.zip` をダウンロードし、任意のフォルダに展開する。
-2. Chrome で `chrome://extensions` を開く。
-3. 右上の「デベロッパーモード」を有効にする。
-4. 「パッケージ化されていない拡張機能を読み込む」から、展開したフォルダを選択する。
-5. ツールバーに拡張のアイコンが表示されます。初回はオプションページが自動で開き、API キー設定へ進みます。
+所要時間は 2〜3 分です。ビルド環境は不要です。
+
+#### 1. zip をダウンロードして展開する
+
+[Releases](https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/releases/latest) ページ下部の **Assets** から `auto-form-filler-vX.Y.Z.zip` をダウンロードし、任意のフォルダに展開します。
+
+> 展開したフォルダは拡張の本体として使い続けるので、ダウンロードフォルダではなく `Documents\auto-form-filler` など消さない場所に置いてください。
+
+![Releases ページの Assets から zip をダウンロード](docs/images/install/01-release.png)
+
+#### 2. `chrome://extensions` を開き、デベロッパーモードを有効にする
+
+アドレスバーに `chrome://extensions` と入力して開き、右上の **「デベロッパーモード」** をオンにします。
+
+![chrome://extensions を開いた直後](docs/images/install/02-extensions.png)
+
+オンにすると、上部に「パッケージ化されていない拡張機能を読み込む」ボタンが現れます。
+
+![デベロッパーモードをオンにした状態](docs/images/install/03-devmode.png)
+
+#### 3. 展開したフォルダを読み込む
+
+**「パッケージ化されていない拡張機能を読み込む」** を押し、手順 1 で展開したフォルダ（`manifest.json` が直下にあるフォルダ）を選択します。一覧に「Auto Form Filler」が表示されれば完了です。
+
+![Auto Form Filler が読み込まれた状態](docs/images/install/04-loaded.png)
+
+#### 4. API キーを設定する
+
+初回はオプションページが自動で開きます（開かない場合はツールバーの拡張アイコン → ⚙ から）。「API 設定」タブの手順に沿って Jev の API キーを取得し、貼り付けて **「接続テスト」→「保存」** してください。取得方法は次の節にもまとめています。
+
+![オプションページの API 設定タブ](docs/images/install/05-options-api.png)
+
+#### 5. 使ってみる
+
+入力したいフォームのページで、ツールバーの拡張アイコン（または `Alt+Shift+F`）からポップアップを開き、プロフィールを選んで **「このページに入力」** を押します。
+
+<img src="docs/images/install/06-popup.png" alt="ポップアップ" width="360">
+
+> ツールバーにアイコンが見当たらないときは、パズルピース型の「拡張機能」ボタンから Auto Form Filler をピン留めしてください。
 
 ## Jev の API キーを取得する
 
