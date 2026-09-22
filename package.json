@@ -21,7 +21,8 @@
     "poc:ping:env": "node --env-file=.env --import tsx poc/ping.ts",
     "package": "npm run build && node scripts/package.mjs",
     "store-screenshots": "npm run build && tsx e2e/patch-manifest-for-e2e.ts && tsx scripts/store-screenshots.ts",
-    "render-promo": "node scripts/render-promo.mjs"
+    "render-promo": "node scripts/render-promo.mjs",
+    "demo-gif": "npm run build && tsx e2e/patch-manifest-for-e2e.ts && tsx scripts/record-demo-gif.ts"
   },
   "dependencies": {
     "react": "^19.0.0",

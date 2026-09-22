@@ -40,6 +40,7 @@ npm install
 | `npm run package` | ビルド後、Web Store / GitHub Release 提出用の zip を `release/` に生成 |
 | `npm run store-screenshots` | Web Store 掲載用スクリーンショット（1280×800）を `docs/store/screenshots/` に生成（Jev はモック） |
 | `npm run render-promo` | Web Store 用プロモタイル（440×280）を `docs/store/promo/` に生成 |
+| `npm run demo-gif` | README 用のデモ GIF を `docs/images/demo.gif` に生成（Jev はモック。`ffmpeg` が必要） |
 
 ### ディレクトリ構成
 

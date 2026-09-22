@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-ffdd00?logo=buymeacoffee&logoColor=000)](https://buymeacoffee.com/yurinchi)
 
+![ポップアップの「このページに入力」を押すと、会員登録フォームの氏名・フリガナ・メール・電話・生年月日・性別・住所が一括で入力されるデモ](docs/images/demo.gif)
+
 Jev（TypeSafe AI の判定特化モデル）でフォームの項目を判定し、ローカルに保存したプロフィールで自動入力する Chrome 拡張（Manifest V3）です。
 
 氏名・フリガナ・住所・電話番号・生年月日など、日本語フォームでよく崩れる分割入力（電話 3 分割、郵便番号 2 分割、生年月日 3 select など）にも対応します。
