@@ -247,3 +247,61 @@ describe('resolveFill: checkbox は常に対象外', () => {
     expect(assignments.f0).toBeUndefined();
   });
 });
+
+describe('resolveFill: ハイフン抜きを求める欄', () => {
+  const PHONE = profile({ phone: '090-1234-5678', postal_code: '100-0001' });
+
+  function fill(f: Partial<ExtractedField>, choice = 'phone', profileFields = PHONE) {
+    const { assignments, outcomes } = resolveFill({
+      fields: { f0: field(f) },
+      answers: { f0: { choice, confidence: 0.95 } },
+      profileFields,
+      settings: DEFAULT_SETTINGS,
+    });
+    return { assignment: assignments.f0, reason: outcomes[0]?.reason };
+  }
+
+  it('「-」抜きでご登録ください と書かれていればハイフンを取り除く（実サイトで報告された事例）', () => {
+    expect(fill({ label: '電話番号（「-」抜きでご登録ください）' }).assignment).toEqual({
+      kind: 'text',
+      value: '09012345678',
+    });
+  });
+
+  it('ハイフンなし / ハイフン不要 / 半角数字のみ / without hyphens も拾う', () => {
+    for (const label of ['電話番号 ハイフンなし', '電話番号（ハイフン不要）', '電話番号 半角数字のみ', 'Phone (without hyphens)']) {
+      expect(fill({ label }).assignment).toEqual({ kind: 'text', value: '09012345678' });
+    }
+  });
+
+  it('プレースホルダーに書かれている場合も拾う', () => {
+    expect(fill({ label: '電話番号', placeholder: '09012345678（ハイフンなし）' }).assignment).toEqual({
+      kind: 'text',
+      value: '09012345678',
+    });
+  });
+
+  it('文言がなくても maxlength がハイフン込みでは足りない場合は取り除く', () => {
+    expect(fill({ label: '電話番号', maxlength: 11 }).assignment).toEqual({ kind: 'text', value: '09012345678' });
+  });
+
+  it('type=number にはハイフンを入れない', () => {
+    expect(fill({ label: '電話番号', type: 'number' }).assignment).toEqual({ kind: 'text', value: '09012345678' });
+  });
+
+  it('郵便番号も同様に扱う', () => {
+    expect(fill({ label: '郵便番号（ハイフンなし）' }, 'postal_code').assignment).toEqual({
+      kind: 'text',
+      value: '1000001',
+    });
+  });
+
+  it('指示がなければハイフンを保つ', () => {
+    expect(fill({ label: '電話番号' }).assignment).toEqual({ kind: 'text', value: '090-1234-5678' });
+    expect(fill({ label: '電話番号', maxlength: 13 }).assignment).toEqual({ kind: 'text', value: '090-1234-5678' });
+  });
+
+  it('ハイフンを抜いても maxlength に収まらなければ従来どおりスキップする', () => {
+    expect(fill({ label: '電話番号', maxlength: 5 }).reason).toBe('skipped_max_length');
+  });
+});

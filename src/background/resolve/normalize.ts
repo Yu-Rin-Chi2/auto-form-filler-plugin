@@ -4,7 +4,7 @@
  * 一致の優先順位: 完全一致 → 正規化一致 → 前方一致（一意な場合のみ）。
  * Jev へのフォールバックは行わない（一致しなければ null＝スキップ、要件 P1）。
  */
-import type { AccountType, Gender } from '../../shared/types';
+import type { AccountType, ExtractedField, Gender } from '../../shared/types';
 
 // ---------------------------------------------------------------------------
 // 共通正規化: trim・全角英数→半角・半角カナ→全角カナ・空白除去・大文字小文字無視
@@ -70,6 +70,31 @@ export function normalizeCommon(input: string): string {
   s = s.replace(/\s+/g, '');
   s = s.toLowerCase();
   return s;
+}
+
+/**
+ * 「ハイフン抜きで」と指示しているラベル・プレースホルダー。
+ * 「-」抜き / ハイフンなし / ハイフン不要 / 半角数字のみ / without hyphens などを拾う。
+ * 各種ダッシュ（全角・半角・長音記号）を同一視する。
+ */
+const NO_HYPHEN_TEXT_PATTERN =
+  /(ハイフン|[-‐‑–—―ー−])\s*[」』】）)]*\s*(抜き|なし|無し|不要|を除|を入れ|を含め|は入れ)|(半角)?数字のみ|数字だけ|(without|no)\s+hyphens?|digits?\s+only/i;
+
+/**
+ * この欄にハイフンを入れてはいけないか判定する（要件 5.3）。
+ * 保存値はハイフン区切り（`090-1234-5678`）なので、フォームが嫌がる場合は取り除く必要がある。
+ */
+export function shouldStripHyphens(field: ExtractedField, value: string): boolean {
+  if (!value.includes('-')) return false;
+  // number 型にハイフンは入らない
+  if (field.type === 'number') return true;
+  if (NO_HYPHEN_TEXT_PATTERN.test(`${field.label} ${field.placeholder ?? ''}`)) return true;
+  // 文言がなくても、桁数上限がハイフン込みでは収まらず、抜けば収まるなら抜く
+  if (field.maxlength !== undefined) {
+    const stripped = value.replace(/-/g, '');
+    if (value.length > field.maxlength && stripped.length <= field.maxlength) return true;
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

@@ -31,6 +31,7 @@ import {
   matchOption,
   matchPrefecture,
   matchYear,
+  shouldStripHyphens,
 } from './normalize';
 
 export interface AnswerLike {
@@ -72,6 +73,9 @@ const KANA_CHOICE_KEYS = new Set<string>([
   'address_line2_kana',
   'address_kana_full',
 ]);
+
+/** 保存値がハイフン区切りになっている項目。フォームが嫌がる場合は取り除く */
+const HYPHENATED_CHOICE_KEYS = new Set<string>(['phone', 'postal_code']);
 
 interface Decision {
   id: string;
@@ -278,6 +282,10 @@ export function resolveFill(input: ResolveInput): ResolveOutput {
       }
       if (KANA_CHOICE_KEYS.has(choiceKey) && shouldConvertToHiragana(d.field.label)) {
         value = katakanaToHiragana(value);
+      }
+      // 保存値はハイフン区切りなので、「-」抜きを求める欄では取り除く（maxlength 判定より前に行う）
+      if (HYPHENATED_CHOICE_KEYS.has(choiceKey) && shouldStripHyphens(d.field, value)) {
+        value = value.replace(/-/g, '');
       }
       if (d.field.maxlength !== undefined && value.length > d.field.maxlength) {
         outcomes.push(outcome(d, 'skipped_max_length', customLabels));
