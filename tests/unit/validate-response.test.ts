@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { validateAnswer, validateResponse } from '../../src/background/jev/validate-response';
-import { callJevWithValidation } from '../../src/background/jev/client';
-import type { ProviderConfig } from '../../src/background/jev/client';
-import { JevError } from '../../src/shared/types';
+import { validateAnswer, validateResponse } from '../../workers/src/validate-response';
+import { InvalidResponseError, runInference } from '../../workers/src/infer';
+import type { AiRunner } from '../../workers/src/infer';
+import type { JevRequest } from '../../workers/src/build-request';
 
 const CRITERIA_KEYS = ['family_name', 'given_name', 'none'];
 
@@ -64,50 +64,45 @@ describe('validateResponse', () => {
   });
 });
 
-describe('callJevWithValidation: 再送ロジック（UNIT-RES-06/07）', () => {
-  const cfg: ProviderConfig = {
-    provider: 'openrouter',
-    url: 'https://openrouter.ai/api/v1/systemone',
-    model: 'typesafe/jev-1.13',
-    apiKey: 'test-key',
-    headers: {},
+describe('runInference: Worker 側の再送ロジック（UNIT-RES-06/07）', () => {
+  const request = { state: { page: { url: '', title: '', lang: '' }, fields: {}, profile: {} }, questions: {} } as JevRequest;
+  const invalid = { answers: { f0: { choice: 'unknown_key', confidence: 0.9, probabilities: {} } } };
+  const valid = {
+    answers: { f0: { choice: 'family_name', confidence: 0.9, probabilities: validProbabilities('family_name') } },
   };
-  const request = { state: {}, questions: {} };
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
+  it('UNIT-RES-06: 1回目が不正なら 1 回だけ再送し、成功すれば合計 2 回の呼び出し', async () => {
+    let callCount = 0;
+    const ai: AiRunner = {
+      run: async () => {
+        callCount++;
+        return callCount === 1 ? invalid : valid;
+      },
+    };
+
+    const response = await runInference(ai, 'typesafe/jev', request, ['f0'], CRITERIA_KEYS);
+    expect(callCount).toBe(2);
+    expect(response.answers.f0?.choice).toBe('family_name');
   });
 
-  it('UNIT-RES-06: 1回目が不正なら 1 回だけ再送し、成功すれば合計 2 回のリクエスト', async () => {
+  it('UNIT-RES-07: 再送しても不正なら InvalidResponseError になり、それ以上再送しない', async () => {
     let callCount = 0;
-    const invalidBody = JSON.stringify({ answers: { f0: { choice: 'unknown_key', confidence: 0.9, probabilities: {} } } });
-    const validBody = JSON.stringify({
-      answers: { f0: { choice: 'family_name', confidence: 0.9, probabilities: validProbabilities('family_name') } },
-    });
-    const fetchMock = vi.fn(async () => {
-      callCount++;
-      const body = callCount === 1 ? invalidBody : validBody;
-      return new Response(body, { status: 200 });
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    const ai: AiRunner = {
+      run: async () => {
+        callCount++;
+        return invalid;
+      },
+    };
 
-    const result = await callJevWithValidation(request, cfg, ['f0'], CRITERIA_KEYS);
+    await expect(runInference(ai, 'typesafe/jev', request, ['f0'], CRITERIA_KEYS)).rejects.toBeInstanceOf(
+      InvalidResponseError,
+    );
     expect(callCount).toBe(2);
-    expect(result.response.answers.f0?.choice).toBe('family_name');
   });
 
-  it('UNIT-RES-07: 再送しても不正なら invalid_response エラーになり、それ以上再送しない', async () => {
-    let callCount = 0;
-    const invalidBody = JSON.stringify({ answers: { f0: { choice: 'unknown_key', confidence: 0.9, probabilities: {} } } });
-    const fetchMock = vi.fn(async () => {
-      callCount++;
-      return new Response(invalidBody, { status: 200 });
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    await expect(callJevWithValidation(request, cfg, ['f0'], CRITERIA_KEYS)).rejects.toMatchObject({
-      kind: 'invalid_response',
-    } satisfies Partial<JevError>);
-    expect(callCount).toBe(2);
+  it('Workers AI の { state, result, gatewayMetadata } 形式の応答から result を取り出す', async () => {
+    const ai: AiRunner = { run: async () => ({ state: 'Completed', result: valid, gatewayMetadata: {} }) };
+    const response = await runInference(ai, 'typesafe/jev', request, ['f0'], CRITERIA_KEYS);
+    expect(response.answers.f0?.choice).toBe('family_name');
   });
 });

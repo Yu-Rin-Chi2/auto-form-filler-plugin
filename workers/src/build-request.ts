@@ -5,12 +5,21 @@
  * 送るのは項目の「説明文」（`PROFILE_FIELD_DESCRIPTIONS`）とフィールドのメタデータのみで、
  * 値を送りたくても構造的に送れない（要件 P1）。
  */
-import { MAX_FIELDS } from '../../shared/constants';
-import { PROFILE_FIELD_DESCRIPTIONS } from '../../shared/profile-fields';
-import type { ExtractedFields, PageInfo } from '../../shared/types';
-import { normalizePageUrl } from '../../shared/url';
+import { PROFILE_FIELD_DESCRIPTIONS } from './profile-fields';
+import type { JevFields, JevPageInfo } from './types';
 
-export { normalizePageUrl, MAX_FIELDS };
+/** 拡張側の `src/shared/constants.ts` と同じ値。Worker 側でも上限として強制する */
+export const MAX_FIELDS = 60;
+
+/** クエリ・フラグメントを除いた origin + pathname（拡張側 `src/shared/url.ts` と同じ規則） */
+export function normalizePageUrl(rawUrl: string): string {
+  try {
+    const u = new URL(rawUrl);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return rawUrl.split('?')[0]?.split('#')[0] ?? rawUrl;
+  }
+}
 
 export interface ChoiceQuestion {
   type: 'choice';
@@ -19,13 +28,12 @@ export interface ChoiceQuestion {
 }
 
 export interface JevRequestState {
-  page: PageInfo;
-  fields: ExtractedFields;
+  page: JevPageInfo;
+  fields: JevFields;
   profile: Record<string, string>;
 }
 
 export interface JevRequest {
-  model?: string;
   state: JevRequestState;
   questions: Record<string, ChoiceQuestion>;
 }
@@ -49,9 +57,8 @@ function buildNullCriteria(descriptions: Record<string, string>): Record<string,
  * @param profileDescriptions Jev に提示する項目説明（固定項目 + ユーザー定義項目）。省略時は固定項目のみ
  */
 export function buildJevRequest(
-  page: PageInfo,
-  fields: ExtractedFields,
-  model?: string,
+  page: JevPageInfo,
+  fields: JevFields,
   profileDescriptions: Record<string, string> = PROFILE_FIELD_DESCRIPTIONS,
 ): BuildRequestResult {
   const allIds = Object.keys(fields);
@@ -62,7 +69,7 @@ export function buildJevRequest(
     return { request: null, fieldIds: [], overLimitCount };
   }
 
-  const includedFields: ExtractedFields = {};
+  const includedFields: JevFields = {};
   for (const id of fieldIds) {
     const f = fields[id];
     if (f) includedFields[id] = f;
@@ -79,7 +86,6 @@ export function buildJevRequest(
 
   return {
     request: {
-      model,
       state: {
         page: { ...page, url: normalizePageUrl(page.url) },
         fields: includedFields,

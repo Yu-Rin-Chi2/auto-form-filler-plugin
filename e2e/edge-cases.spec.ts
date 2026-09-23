@@ -39,14 +39,14 @@ test.describe('エッジケース（レビュー指摘 B-2）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/empty-form.html`);
     await clickRunButton(popupPage, 'このページに入力');
     await expect(popupPage.getByText('入力できるフォームが見つかりません')).toBeVisible({ timeout: 15000 });
 
-    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/systemone'));
+    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/infer'));
     expect(jevRequests.length).toBe(0);
 
     await formPage.close();
@@ -61,7 +61,7 @@ test.describe('エッジケース（レビュー指摘 B-2）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/long-form.html`);
@@ -74,10 +74,10 @@ test.describe('エッジケース（レビュー指摘 B-2）', () => {
     await expect(formPage.locator('input[name="email"]')).toHaveValue('ichiro.suzuki.e2e@example.test');
 
     // Jev に送られたフィールド数は60件ちょうど（65件中、先頭60件のみ）
-    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/systemone'));
+    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/infer'));
     expect(jevRequests.length).toBe(1);
-    const sentBody = jevRequests[0]?.body as { state?: { fields?: Record<string, unknown> } };
-    expect(Object.keys(sentBody.state?.fields ?? {})).toHaveLength(60);
+    const sentBody = jevRequests[0]?.body as { fields?: Record<string, unknown> };
+    expect(Object.keys(sentBody.fields ?? {})).toHaveLength(60);
 
     // 超過5件は skippedOther に合算される（付記1）
     const result = await readLastResult(popupPage);
@@ -96,7 +96,7 @@ test.describe('エッジケース（レビュー指摘 B-2）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl, overwriteFilled: false }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl, overwriteFilled: false }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(
@@ -117,7 +117,7 @@ test.describe('エッジケース（レビュー指摘 B-2）', () => {
     // アクティブタブが formPage から移ってしまう（chrome.tabs.query({active:true}) の対象が
     // ずれる）。openFormAndPopup と同様に明示的に formPage を前面に戻してから再実行する。
     await seedStorage(context, extensionId, {
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl, overwriteFilled: true }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl, overwriteFilled: true }),
     });
     await formPage.bringToFront();
     await clickRunButton(popupPage, 'このページに入力');
@@ -135,7 +135,7 @@ test.describe('エッジケース（レビュー指摘 B-2）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(
@@ -164,7 +164,7 @@ test.describe('エッジケース（レビュー指摘 B-2）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(

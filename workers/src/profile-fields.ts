@@ -1,15 +1,15 @@
-import type { CustomField, ProfileFieldKey } from './types';
+import type { JevCustomField } from './types';
 
 /**
  * Jev に送るプロフィール項目の説明（英語）。
- * `poc/profile-fields.ts` を移植。値は一切含めない（項目名 + 説明文のみ、要件 P1）。
+ * 値は一切含めない（項目名 + 説明文のみ、要件 P1）。
  *
  * poc 版との差分: 要件 2.4 は派生項目として `full_name_romaji`
  * （given_name_romaji + family_name_romaji の英語語順）を定義しているが、
  * poc/profile-fields.ts には含まれていなかった（PoC フィクスチャで検証していなかったため）。
  * 要件定義を正として本実装では追加する。
  */
-export const PROFILE_FIELD_DESCRIPTIONS: Record<ProfileFieldKey, string> = {
+export const PROFILE_FIELD_DESCRIPTIONS: Record<string, string> = {
   family_name: 'Family name / surname in kanji（姓・苗字）',
   given_name: 'Given name / first name in kanji（名）',
   full_name: 'Full name in a single field, family name then given name（氏名・お名前）',
@@ -61,16 +61,17 @@ export const PROFILE_FIELD_DESCRIPTIONS: Record<ProfileFieldKey, string> = {
   none: 'No profile value fits: free-form text, a question, a consent checkbox, a preference, or not personal information',
 };
 
-export const PROFILE_FIELD_KEYS_FOR_JEV = Object.keys(PROFILE_FIELD_DESCRIPTIONS) as ProfileFieldKey[];
+export const PROFILE_FIELD_KEYS_FOR_JEV = Object.keys(PROFILE_FIELD_DESCRIPTIONS);
 
 /**
- * ユーザー定義項目の Jev 向け説明文。label（必須）と description（任意）だけを使い、value は含めない。
+ * ユーザー定義項目の Jev 向け説明文。label（必須）と description（任意）だけを使う。
+ * 引数の型がそもそも value を持たないため、値を混ぜることはできない。
  * label が空の項目は Jev に提示しない（判定のしようがないため）。
  */
-export function describeCustomField(field: CustomField): string | null {
+export function describeCustomField(field: JevCustomField): string | null {
   const label = field.label.trim();
   if (!label) return null;
-  const description = field.description.trim();
+  const description = (field.description ?? '').trim();
   return description ? `User-defined entry "${label}": ${description}` : `User-defined entry "${label}"`;
 }
 
@@ -78,7 +79,7 @@ export function describeCustomField(field: CustomField): string | null {
  * 固定項目 + ユーザー定義項目 の説明（Jev の `state.profile`）。`none` は末尾に置く
  * （選択肢の並びを固定項目 → ユーザー定義 → none に保つため）。
  */
-export function buildProfileDescriptions(customFields: CustomField[] = []): Record<string, string> {
+export function buildProfileDescriptions(customFields: JevCustomField[] = []): Record<string, string> {
   const { none, ...fixed } = PROFILE_FIELD_DESCRIPTIONS;
   const out: Record<string, string> = { ...fixed };
   for (const c of customFields) {

@@ -2,12 +2,12 @@
  * 自動入力のオーケストレーション（要件 4.1 のシーケンス）。
  * content script へのメッセージング・Jev 呼び出し・storage 更新を行う、拡張の司令塔。
  */
-import { buildProfileDescriptions } from '../shared/profile-fields';
 import { resolveLocale, t } from '../shared/i18n';
 import { getProfiles, getSettings, saveLastResult, saveSettings } from '../shared/storage';
 import type {
   ApplyFillRequest,
   ApplyFillResponse,
+  ChoiceAnswer,
   ExtractFieldsResponse,
   FieldOutcome,
   FillResult,
@@ -16,9 +16,7 @@ import type {
 } from '../shared/types';
 import { JevError } from '../shared/types';
 import { findPendingFrameOrigins, mergeFrameExtractions, splitAssignmentsByFrame, type FrameExtraction } from './frames';
-import { buildJevRequest } from './jev/build-request';
-import { callJevWithValidation, resolveProviderConfig } from './jev/client';
-import type { ChoiceAnswer } from './jev/validate-response';
+import { callJev, toCustomFieldPayload } from './jev/client';
 import { aggregateFillResult } from './resolve/aggregate';
 import { resolveFill } from './resolve/resolve';
 
@@ -144,9 +142,6 @@ async function runFillInner(profileId: string): Promise<FillOutcome> {
   const profiles = await getProfiles();
   const profile = profiles.find((p) => p.id === profileId) as Profile | undefined;
 
-  if (!settings.apiKey) {
-    throw new JevError('no_api_key', 'API キーが設定されていません');
-  }
   if (!profile) {
     throw new JevError('unknown', 'プロフィールが見つかりません');
   }
@@ -195,24 +190,22 @@ async function runFillInner(profileId: string): Promise<FillOutcome> {
     throw new JevError('no_fields', '入力できるフォームが見つかりません');
   }
 
-  const cfg = resolveProviderConfig(settings);
-  // 固定項目 + このプロフィールのユーザー定義項目（説明文のみ。値は送らない）
-  const profileDescriptions = buildProfileDescriptions(profile.customFields ?? []);
-  const built = buildJevRequest(extraction.page, extraction.fields, cfg.model, profileDescriptions);
-  if (!built.request) {
-    throw new JevError('no_fields', '入力できるフォームが見つかりません');
-  }
+  const fieldIds = Object.keys(extraction.fields);
 
-  const { response, latencyMs } = await callJevWithValidation(
-    built.request,
-    cfg,
-    built.fieldIds,
-    Object.keys(profileDescriptions),
+  // 送るのはフォーム項目の見た目の情報と、ユーザー定義項目の項目名・説明だけ。
+  // プロフィールの値は型の上で渡せない（要件 P1）
+  const { response, latencyMs } = await callJev(
+    {
+      page: extraction.page,
+      fields: extraction.fields,
+      customFields: toCustomFieldPayload(profile.customFields ?? []),
+    },
+    settings.workerEndpoint,
     { debugLogging: settings.debugLogging },
   );
 
   const answers: Record<string, ChoiceAnswer | undefined> = {};
-  for (const id of built.fieldIds) {
+  for (const id of fieldIds) {
     answers[id] = response.answers[id];
   }
 

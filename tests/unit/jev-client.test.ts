@@ -9,7 +9,6 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { callJev } from '../../src/background/jev/client';
-import type { ProviderConfig } from '../../src/background/jev/client';
 import { JevError } from '../../src/shared/types';
 
 function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
@@ -21,15 +20,13 @@ function delayedResponse(delayMs: number, response: Response): Promise<Response>
   return new Promise((resolve) => setTimeout(() => resolve(response), delayMs));
 }
 
-const CFG: ProviderConfig = {
-  provider: 'typesafe',
-  url: 'https://api.typesafe.ai/v1/systemone',
-  model: 'jev-latest',
-  apiKey: 'sk-test',
-  headers: {},
-};
+const ENDPOINT = 'https://worker.example/v1/infer';
 
-const REQUEST = { state: {}, questions: {} };
+const REQUEST = {
+  page: { url: 'https://example.com/form', title: 'フォーム', lang: 'ja' },
+  fields: { f0: { tag: 'input' as const, type: 'text', label: '姓', currentValue: 'empty' as const } },
+  customFields: [],
+};
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date', 'performance'] });
@@ -52,7 +49,7 @@ describe('callJev: リトライ待機中の keepalive・上限（レビュー指
     const getPlatformInfo = vi.fn().mockResolvedValue({});
     vi.stubGlobal('chrome', { runtime: { getPlatformInfo } });
 
-    const promise = callJev(REQUEST, CFG);
+    const promise = callJev(REQUEST, ENDPOINT);
 
     // 15 秒（上限）進めれば 2 回目のリクエストが送られているはず
     await vi.advanceTimersByTimeAsync(15_000);
@@ -73,7 +70,7 @@ describe('callJev: リトライ待機中の keepalive・上限（レビュー指
     const getPlatformInfo = vi.fn().mockResolvedValue({});
     vi.stubGlobal('chrome', { runtime: { getPlatformInfo } });
 
-    const promise = callJev(REQUEST, CFG);
+    const promise = callJev(REQUEST, ENDPOINT);
 
     // 待機(15秒に丸められる)の完了前でも、chunk（10秒間隔）を過ぎた時点で keepalive が入る
     await vi.advanceTimersByTimeAsync(11_000);
@@ -93,7 +90,7 @@ describe('callJev: リトライ待機中の keepalive・上限（レビュー指
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('chrome', { runtime: { getPlatformInfo: vi.fn().mockResolvedValue({}) } });
 
-    const promise = callJev(REQUEST, CFG);
+    const promise = callJev(REQUEST, ENDPOINT);
     // 万一 reject した際に unhandledRejection にならないよう先に catch しておく
     const assertion = expect(promise).rejects.toBeInstanceOf(JevError);
 

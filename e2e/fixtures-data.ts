@@ -1,4 +1,4 @@
-import { PROFILE_FIELD_KEYS_FOR_JEV } from '../src/shared/profile-fields';
+import { PROFILE_FIELD_KEYS_FOR_JEV } from '../workers/src/profile-fields';
 import { createEmptyProfileFields } from '../src/shared/profile-schema';
 import type { Profile, ProfileFields, Settings } from '../src/shared/types';
 import type { FormFixture } from '../poc/fixtures/forms';
@@ -47,10 +47,7 @@ export function buildTestProfile(id = 'profile-e2e-1'): Profile {
 
 export function buildTestSettings(overrides: Partial<Settings> = {}): Settings {
   return {
-    provider: 'openrouter',
-    apiKey: 'test-dummy-key',
-    model: undefined,
-    baseUrl: undefined,
+    workerEndpoint: undefined,
     lastProfileId: null,
     confidenceThreshold: 0.7,
     highlightFilled: true,
@@ -85,8 +82,8 @@ export function buildChoiceAnswer(choice: string, confidence = 0.95, keys: strin
  */
 export function buildSuccessHandler(form: FormFixture, confidence = 0.95): JevHandler {
   return (rawBody) => {
-    const body = rawBody as { questions?: Record<string, unknown> };
-    const questionIds = Object.keys(body.questions ?? {});
+    const body = rawBody as { fields?: Record<string, unknown> };
+    const questionIds = Object.keys(body.fields ?? {});
     const answers: Record<string, unknown> = {};
     for (const id of questionIds) {
       const m = /^f(\d+)$/.exec(id);
@@ -114,8 +111,8 @@ export function buildSuccessHandler(form: FormFixture, confidence = 0.95): JevHa
  */
 export function buildFixedAnswerHandler(choiceById: Record<string, string>): JevHandler {
   return (rawBody) => {
-    const body = rawBody as { questions?: Record<string, unknown> };
-    const questionIds = Object.keys(body.questions ?? {});
+    const body = rawBody as { fields?: Record<string, unknown> };
+    const questionIds = Object.keys(body.fields ?? {});
     const answers: Record<string, unknown> = {};
     for (const id of questionIds) {
       answers[id] = buildChoiceAnswer(choiceById[id] ?? 'none');

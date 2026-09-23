@@ -24,3 +24,6 @@ release/
 
 # Claude Code のローカル設定（個人の権限設定を含む）
 .claude/
+
+# wrangler のローカル状態（workers/ のビルド成果物とローカル KV 等）
+workers/.wrangler/

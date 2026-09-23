@@ -33,7 +33,7 @@ test.describe('メインフロー（E2E-FLOW-01）と原則検証（P1/P2）', (
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
@@ -72,7 +72,7 @@ test.describe('メインフロー（E2E-FLOW-01）と原則検証（P1/P2）', (
     expect(formPage.url()).toContain('ec-signup.html');
 
     // P1: Jev へのリクエスト本文にプロフィールの実値が含まれない
-    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/systemone'));
+    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/infer'));
     expect(jevRequests.length).toBeGreaterThan(0);
     const combined = JSON.stringify(jevRequests.map((r) => r.body));
     expect(combined).not.toContain('鈴木');
@@ -107,7 +107,7 @@ test.describe('追加フィクスチャのメインフロー（E2E-FLOW-03/04/06
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/google-forms.html`);
@@ -140,7 +140,7 @@ test.describe('追加フィクスチャのメインフロー（E2E-FLOW-03/04/06
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/job-apply.html`);
@@ -177,7 +177,7 @@ test.describe('追加フィクスチャのメインフロー（E2E-FLOW-03/04/06
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(
@@ -220,7 +220,7 @@ test.describe('追加フィクスチャのメインフロー（E2E-FLOW-03/04/06
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/en-checkout.html`);

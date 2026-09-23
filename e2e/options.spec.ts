@@ -120,7 +120,7 @@ test.describe('オプション: プロフィール管理（E2E-OPTIONS-01〜05�
     const profile = buildNamedProfile('唯一のプロフィール', 'p-only');
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test' }),
+      settings: buildTestSettings(),
     });
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/options.html#profiles`);
@@ -140,14 +140,14 @@ test.describe('オプション: プロフィール管理（E2E-OPTIONS-01〜05�
 });
 
 test.describe('オプション: インポート / エクスポート（E2E-OPTIONS-06〜09）', () => {
-  test('E2E-OPTIONS-06: エクスポートしたJSONにプロフィールは含まれ、APIキーは含まれない', async ({
+  test('E2E-OPTIONS-06: エクスポートしたJSONにプロフィールは含まれ、設定は含まれない', async ({
     context,
     extensionId,
   }) => {
     const profile = buildNamedProfile('エクスポート対象', 'p-export');
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-super-secret-key' }),
+      settings: buildTestSettings({ workerEndpoint: 'https://private-endpoint.example/v1/infer' }),
     });
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/options.html#profiles`);
@@ -164,8 +164,8 @@ test.describe('オプション: インポート / エクスポート（E2E-OPTIO
 
     expect(text).toContain('エクスポート対象');
     expect(text).toContain('profiles');
-    expect(text).not.toContain('sk-super-secret-key');
-    expect(text).not.toContain('apiKey');
+    expect(text).not.toContain('private-endpoint.example');
+    expect(text).not.toContain('workerEndpoint');
 
     await page.close();
   });
@@ -234,101 +234,6 @@ test.describe('オプション: インポート / エクスポート（E2E-OPTIO
   });
 });
 
-test.describe('オプション: API 設定（E2E-OPTIONS-10〜13）', () => {
-  let server: MockServer;
-
-  test.beforeAll(async () => {
-    server = await startMockServer();
-  });
-
-  test.afterAll(async () => {
-    await server.close();
-  });
-
-  test('E2E-OPTIONS-10: プロバイダ切替は再読み込み後も維持される', async ({ context, extensionId }) => {
-    await seedStorage(context, extensionId, {
-      profiles: [],
-      settings: buildTestSettings({ provider: 'openrouter' }),
-    });
-    const page = await context.newPage();
-    await page.goto(`chrome-extension://${extensionId}/options.html#api`);
-
-    await page.getByRole('radio', { name: 'TypeSafe' }).check();
-    await page.getByRole('button', { name: '保存' }).click();
-    await page.reload();
-
-    await expect(page.getByRole('radio', { name: 'TypeSafe' })).toBeChecked();
-    await page.close();
-  });
-
-  test('E2E-OPTIONS-11: APIキーは末尾4文字のみ表示されマスクされる', async ({ context, extensionId }) => {
-    await seedStorage(context, extensionId, {
-      profiles: [],
-      settings: buildTestSettings({ apiKey: 'sk-test' }),
-    });
-    const page = await context.newPage();
-    await page.goto(`chrome-extension://${extensionId}/options.html#api`);
-    await page.reload();
-
-    // 入力欄は password 型で伏字表示（貼り付け可能なまま）。保存済みキーの末尾 4 文字はヒント行に表示
-    await expect(page.locator('#api-key')).toHaveAttribute('type', 'password');
-    await expect(page.getByText('保存済みのキー: •••test')).toBeVisible();
-
-    // 「表示」で平文に切り替わる
-    await page.getByRole('button', { name: '表示' }).click();
-    await expect(page.locator('#api-key')).toHaveAttribute('type', 'text');
-    await expect(page.locator('#api-key')).toHaveValue('sk-test');
-    await page.close();
-  });
-
-  test('E2E-OPTIONS-11b: 伏字状態でも API キーを貼り付けて保存できる', async ({ context, extensionId }) => {
-    await seedStorage(context, extensionId, {
-      profiles: [],
-      settings: buildTestSettings({ apiKey: '' }),
-    });
-    const page = await context.newPage();
-    await page.goto(`chrome-extension://${extensionId}/options.html#api`);
-
-    const input = page.locator('#api-key');
-    await expect(input).toHaveAttribute('type', 'password');
-    await input.fill('  sk-or-v1-pasted  ');
-    await expect(input).toHaveValue('sk-or-v1-pasted');
-    await page.getByRole('button', { name: '保存' }).click();
-    await page.reload();
-
-    await expect(page.getByText('保存済みのキー: •••••••••••sted')).toBeVisible();
-    await page.close();
-  });
-
-  test('E2E-OPTIONS-12: 接続テスト成功', async ({ context, extensionId }) => {
-    server.setJevHandler(() => ({ status: 200, body: { answers: {} } }));
-    await seedStorage(context, extensionId, {
-      profiles: [],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
-    });
-    const page = await context.newPage();
-    await page.goto(`chrome-extension://${extensionId}/options.html#api`);
-
-    await page.getByRole('button', { name: '接続テスト' }).click();
-    await expect(page.getByText(/接続できました/)).toBeVisible({ timeout: 15000 });
-    await page.close();
-  });
-
-  test('E2E-OPTIONS-13: 接続テスト失敗（401）', async ({ context, extensionId }) => {
-    server.setJevHandler(() => ({ status: 401, body: { error: 'invalid key' } }));
-    await seedStorage(context, extensionId, {
-      profiles: [],
-      settings: buildTestSettings({ apiKey: 'sk-invalid', baseUrl: server.jevUrl }),
-    });
-    const page = await context.newPage();
-    await page.goto(`chrome-extension://${extensionId}/options.html#api`);
-
-    await page.getByRole('button', { name: '接続テスト' }).click();
-    await expect(page.getByText(/キーが無効です/)).toBeVisible({ timeout: 15000 });
-    await page.close();
-  });
-});
-
 test.describe('オプション: 動作設定（E2E-OPTIONS-14）', () => {
   let server: MockServer;
 
@@ -347,7 +252,7 @@ test.describe('オプション: 動作設定（E2E-OPTIONS-14）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl, confidenceThreshold: 0.7 }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl, confidenceThreshold: 0.7 }),
     });
 
     const optionsPage = await context.newPage();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildJevRequest, MAX_FIELDS, normalizePageUrl } from '../../src/background/jev/build-request';
-import { PROFILE_FIELD_KEYS_FOR_JEV } from '../../src/shared/profile-fields';
+import { buildJevRequest, MAX_FIELDS, normalizePageUrl } from '../../workers/src/build-request';
+import { PROFILE_FIELD_KEYS_FOR_JEV } from '../../workers/src/profile-fields';
 import { createProfile } from '../../src/shared/profile-schema';
 import type { ExtractedField, ExtractedFields, PageInfo } from '../../src/shared/types';
 

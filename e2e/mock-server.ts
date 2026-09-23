@@ -1,8 +1,8 @@
 /**
  * E2E 用のローカルモック HTTP サーバー。
  * - 静的フォーム HTML（e2e/fixtures/*.html）の配信
- * - Jev API のモック（CORS ヘッダ付き。テストごとにハンドラを差し替え可能）
- * 実 Jev API（api.typesafe.ai / openrouter.ai）へは一切通信しない。
+ * - Jev プロキシ Worker のモック（CORS ヘッダ付き。テストごとにハンドラを差し替え可能）
+ * 実際の Worker / Jev へは一切通信しない。
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -90,7 +90,7 @@ export function startMockServer(): Promise<MockServer> {
       const url = `http://127.0.0.1:${port}`;
       resolve({
         url,
-        jevUrl: `${url}/v1/systemone`,
+        jevUrl: `${url}/v1/infer`,
         requests,
         setJevHandler: (h) => {
           handler = h;

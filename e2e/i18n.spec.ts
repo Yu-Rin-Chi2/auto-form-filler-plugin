@@ -21,7 +21,7 @@ test.describe('i18n（F-12、レビュー指摘 B-6）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', locale: 'ja' }),
+      settings: buildTestSettings({ locale: 'ja' }),
     });
     const popup = await context.newPage();
     await popup.goto(`chrome-extension://${extensionId}/popup.html`);
@@ -36,7 +36,7 @@ test.describe('i18n（F-12、レビュー指摘 B-6）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', locale: 'en' }),
+      settings: buildTestSettings({ locale: 'en' }),
     });
 
     const popup = await context.newPage();
@@ -48,7 +48,6 @@ test.describe('i18n（F-12、レビュー指摘 B-6）', () => {
     const options = await context.newPage();
     await options.goto(`chrome-extension://${extensionId}/options.html#profiles`);
     await expect(options.getByRole('tab', { name: 'Profiles' })).toBeVisible();
-    await expect(options.getByRole('tab', { name: 'API Settings' })).toBeVisible();
     await expect(options.getByRole('tab', { name: 'Behavior' })).toBeVisible();
     await expect(options.getByRole('tab', { name: 'Privacy' })).toBeVisible();
     await options.close();
@@ -58,7 +57,7 @@ test.describe('i18n（F-12、レビュー指摘 B-6）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', locale: 'en' }),
+      settings: buildTestSettings({ locale: 'en' }),
     });
     const options = await context.newPage();
     await options.goto(`chrome-extension://${extensionId}/options.html#profiles`);
@@ -90,7 +89,7 @@ test.describe('i18n: Jev への送信内容（E2E-I18N-04）', () => {
     await server.close();
   });
 
-  test('E2E-I18N-04: 英語ロケールで実行しても Jev への instructions/profile は常に英語', async ({
+  test('E2E-I18N-04: UI ロケールを変えても中継サーバーへの送信内容は変わらず、値を含まない', async ({
     context,
     extensionId,
   }) => {
@@ -98,19 +97,23 @@ test.describe('i18n: Jev への送信内容（E2E-I18N-04）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl, locale: 'en' }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl, locale: 'en' }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
     await clickRunButton(popupPage, 'Fill this page');
     await expect(popupPage.getByText(/fields filled/)).toBeVisible({ timeout: 15000 });
 
-    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/systemone'));
+    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/infer'));
     expect(jevRequests.length).toBeGreaterThan(0);
     const combined = JSON.stringify(jevRequests.map((r) => r.body));
-    // UI ロケールに関わらず、Jev への profile 説明・instructions は英語のまま
-    expect(combined).toContain('Family name / surname in kanji');
-    expect(combined).toContain('Which profile entry should be typed or selected');
+    // 送るのはフォーム項目のメタデータだけ。指示文・項目説明は中継サーバーが組み立てるので含まれない
+    // （英語で組み立てられることは workers/src のユニットテストで担保している）
+    expect(combined).toContain('"fields"');
+    expect(combined).not.toContain('Which profile entry should be typed or selected');
+    // P1: UI ロケールに関わらずプロフィールの値は送らない
+    expect(combined).not.toContain('鈴木');
+    expect(combined).not.toContain('ichiro.suzuki.e2e@example.test');
 
     await formPage.close();
     await popupPage.close();

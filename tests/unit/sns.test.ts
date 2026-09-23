@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveFill } from '../../src/background/resolve/resolve';
 import { snsHandle, snsProfileUrl, wantsUrl } from '../../src/shared/derive';
-import { PROFILE_FIELD_DESCRIPTIONS } from '../../src/shared/profile-fields';
+import { PROFILE_FIELD_DESCRIPTIONS } from '../../workers/src/profile-fields';
 import { createEmptyProfileFields } from '../../src/shared/profile-schema';
 import { SNS_FIELD_KEYS } from '../../src/shared/types';
 import type { ExtractedField, ProfileFields } from '../../src/shared/types';

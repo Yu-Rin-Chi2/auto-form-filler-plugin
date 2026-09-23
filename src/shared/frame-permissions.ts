@@ -3,15 +3,19 @@
  *
  * - 許可はユーザーが明示的に「許可して再実行」を押したオリジンにのみ与える（Chrome の確認ダイアログが出る）
  * - `chrome.permissions.request` はユーザー操作起点（ポップアップ / オプションのクリック）でしか呼べない
- * - Jev API 用の固定 host_permissions（manifest 記載）は一覧・取り消しの対象にしない
+ * - プロキシ Worker 用の固定 host_permissions（manifest 記載）は一覧・取り消しの対象にしない
  */
-
-/** manifest の host_permissions に固定で書いてある Jev API のオリジン。ユーザーが取り消す対象ではない */
-const FIXED_ORIGIN_PATTERNS = new Set(['https://api.typesafe.ai/*', 'https://openrouter.ai/*']);
+import { DEFAULT_WORKER_ORIGIN } from './config';
 
 export function originToPattern(origin: string): string {
   return `${origin.replace(/\/+$/, '')}/*`;
 }
+
+/**
+ * manifest の host_permissions に固定で書いてあるオリジン。ユーザーが取り消す対象ではない。
+ * manifest と二重管理にならないよう config から導出する
+ */
+const FIXED_ORIGIN_PATTERNS = new Set([originToPattern(DEFAULT_WORKER_ORIGIN)]);
 
 /** `https://example.com/*` → `https://example.com`（表示用）。パターン以外はそのまま返す */
 export function patternToOrigin(pattern: string): string {
@@ -32,7 +36,7 @@ export async function requestFrameOrigins(origins: string[]): Promise<boolean> {
   return chrome.permissions.request({ origins: origins.map(originToPattern) });
 }
 
-/** ユーザーが許可した iframe 用オリジンの一覧（固定の Jev API ホストを除く） */
+/** ユーザーが許可した iframe 用オリジンの一覧（固定のプロキシ Worker ホストを除く） */
 export async function listGrantedFrameOrigins(): Promise<string[]> {
   const all = await chrome.permissions.getAll();
   return (all.origins ?? []).filter((p) => !FIXED_ORIGIN_PATTERNS.has(p)).map(patternToOrigin);

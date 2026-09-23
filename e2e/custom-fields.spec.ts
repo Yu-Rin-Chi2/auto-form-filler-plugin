@@ -3,6 +3,7 @@
  * - E2E-CUSTOM-01: オプションで項目を追加・保存すると再読み込み後も残る
  * - E2E-CUSTOM-02: Jev がユーザー定義項目を選ぶと入力され、リクエストには項目名・説明のみが含まれ値は含まれない
  */
+import { PROFILE_FIELD_KEYS_FOR_JEV } from '../workers/src/profile-fields';
 import { buildChoiceAnswer, buildTestProfile, buildTestSettings } from './fixtures-data';
 import { clickRunButton, expect, openFormAndPopup, seedStorage, test } from './extension-fixture';
 import { startMockServer } from './mock-server';
@@ -67,15 +68,14 @@ test.describe('ユーザー定義項目（E2E-CUSTOM-01/02）', () => {
     // モック Jev: name="last_name" の欄にユーザー定義項目を、それ以外は none を返す
     const handler: JevHandler = (rawBody) => {
       const body = rawBody as {
-        questions?: Record<string, unknown>;
-        state?: { fields?: Record<string, { name?: string }>; profile?: Record<string, string> };
+        fields?: Record<string, { name?: string }>;
+        customFields?: Array<{ id: string }>;
       };
-      // 実 Jev と同様、リクエストで提示された全項目（固定 + ユーザー定義）に確率を返す
-      const keys = Object.keys(body.state?.profile ?? {});
+      // 実 Jev と同様、提示された全項目（固定 + ユーザー定義）に確率を返す
+      const keys = [...PROFILE_FIELD_KEYS_FOR_JEV, ...(body.customFields ?? []).map((c) => c.id)];
       const answers: Record<string, unknown> = {};
-      for (const id of Object.keys(body.questions ?? {})) {
-        const name = body.state?.fields?.[id]?.name;
-        answers[id] = buildChoiceAnswer(name === 'last_name' ? TWITTER.id : 'none', 0.95, keys);
+      for (const [id, field] of Object.entries(body.fields ?? {})) {
+        answers[id] = buildChoiceAnswer(field.name === 'last_name' ? TWITTER.id : 'none', 0.95, keys);
       }
       return { status: 200, body: { model: 'typesafe/jev-1.13', answers, usage: { input_tokens: 1, output_tokens: 1 } } };
     };
@@ -83,7 +83,7 @@ test.describe('ユーザー定義項目（E2E-CUSTOM-01/02）', () => {
 
     await seedStorage(context, extensionId, {
       profiles: [profileWithCustom()],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
     await clickRunButton(popupPage, 'このページに入力');
@@ -96,7 +96,7 @@ test.describe('ユーザー定義項目（E2E-CUSTOM-01/02）', () => {
     await expect(popupPage.getByText('X（Twitter）の ID')).toBeVisible();
 
     // P1: リクエストには項目名・説明は含まれるが、値は含まれない
-    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/systemone'));
+    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/infer'));
     const combined = JSON.stringify(jevRequests.map((r) => r.body));
     expect(combined).toContain(TWITTER.id);
     expect(combined).toContain('Twitter handle starting with @');

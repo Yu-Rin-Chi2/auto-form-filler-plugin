@@ -67,8 +67,7 @@ async function main() {
     await seedStorage(context, extensionId, {
       profiles: [profile],
       settings: buildTestSettings({
-        apiKey: 'sk-or-v1-demo0000000000000000000000000000000000000000000000000000ab12',
-        baseUrl: server.jevUrl,
+        workerEndpoint: server.jevUrl,
         lastProfileId: profile.id,
       }),
     });

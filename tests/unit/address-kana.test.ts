@@ -9,7 +9,7 @@ import {
   derivePrefectureKana,
   resolveProfileFieldValue,
 } from '../../src/shared/derive';
-import { PROFILE_FIELD_DESCRIPTIONS } from '../../src/shared/profile-fields';
+import { PROFILE_FIELD_DESCRIPTIONS } from '../../workers/src/profile-fields';
 import {
   createEmptyProfileFields,
   normalizeProfileFields,

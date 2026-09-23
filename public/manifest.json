@@ -10,8 +10,7 @@
     "storage"
   ],
   "host_permissions": [
-    "https://api.typesafe.ai/*",
-    "https://openrouter.ai/*"
+    "https://formfill.yrctool.stream/*"
   ],
   "optional_host_permissions": [
     "https://*/*",

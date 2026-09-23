@@ -39,7 +39,7 @@ test.describe('クロスオリジン iframe 内のフォーム（E2E-FRAME-01/02
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: hostServer.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: hostServer.jevUrl }),
     });
 
     const frameUrl = `${frameServer.url}/ec-signup.html`;
@@ -65,7 +65,7 @@ test.describe('クロスオリジン iframe 内のフォーム（E2E-FRAME-01/02
     await expect(popupPage.getByRole('button', { name: '許可して再実行' })).toHaveCount(0);
 
     // P1: iframe 内のフィールドも含め、リクエストに値は含まれない
-    const jevRequests = hostServer.requests.filter((r) => r.path.includes('/v1/systemone'));
+    const jevRequests = hostServer.requests.filter((r) => r.path.includes('/v1/infer'));
     expect(jevRequests.length).toBeGreaterThan(0);
     const combined = JSON.stringify(jevRequests.map((r) => r.body));
     expect(combined).toContain('last_name');
@@ -83,7 +83,7 @@ test.describe('クロスオリジン iframe 内のフォーム（E2E-FRAME-01/02
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: hostServer.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: hostServer.jevUrl }),
     });
 
     // `http://localhost:<port>` は dist-e2e の host_permissions（http://127.0.0.1/*）に一致しない

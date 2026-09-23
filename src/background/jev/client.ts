@@ -1,55 +1,42 @@
 /**
- * Jev（TypeSafe System One API）の薄い fetch ラッパー。`poc/jev-client.ts` を移植し、
- * プロバイダ設定を環境変数でなく Settings から解決するように変更した。
+ * Jev プロキシ Worker（`workers/`）への薄い fetch ラッパー。
+ * API キーは Worker 側が持つため、拡張は資格情報を一切送らない。
  * SDK は使わず素の fetch のみを使う。
+ *
+ * Jev への指示文・選択肢の組み立てと回答の検証は Worker 側の責務（`workers/src/`）。
+ * 拡張が送るのはフォーム項目の「見た目」の情報だけで、
+ * **プロフィールの値を入れる場所が型の上に存在しない**（要件 P1）。
  */
+import { resolveInferUrl } from '../../shared/config';
 import { JevError } from '../../shared/types';
-import type { JevProvider, Settings } from '../../shared/types';
-import { validateResponse } from './validate-response';
-import type { JevResponse } from './validate-response';
+import type { CustomField, ExtractedFields, JevAnswers, PageInfo } from '../../shared/types';
 
-export interface ProviderConfig {
-  provider: JevProvider;
-  url: string;
-  model: string;
-  apiKey: string;
-  headers: Record<string, string>;
+/** ユーザー定義項目のうち Jev に提示してよい部分。`value` は持たない */
+export interface CustomFieldPayload {
+  id: string;
+  label: string;
+  description?: string;
 }
 
-const DEFAULT_URLS: Record<JevProvider, string> = {
-  typesafe: 'https://api.typesafe.ai/v1/systemone',
-  openrouter: 'https://openrouter.ai/api/v1/systemone',
-};
-const DEFAULT_MODELS: Record<JevProvider, string> = {
-  typesafe: 'jev-latest',
-  openrouter: 'typesafe/jev-1.13',
-};
-
-/** 設定タブの「詳細設定」でモデル名・baseUrl を上書きできる（要件 02-nonfunctional 3.1） */
-export function resolveProviderConfig(
-  settings: Pick<Settings, 'provider' | 'apiKey' | 'model' | 'baseUrl'>,
-): ProviderConfig {
-  const provider = settings.provider;
-  const url = settings.baseUrl?.trim() || DEFAULT_URLS[provider];
-  const model = settings.model?.trim() || DEFAULT_MODELS[provider];
-  const headers: Record<string, string> =
-    provider === 'openrouter'
-      ? {
-          'HTTP-Referer': 'https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin',
-          'X-Title': 'auto-form-filler-plugin',
-        }
-      : {};
-  return { provider, url, model, apiKey: settings.apiKey, headers };
+export interface InferRequest {
+  page: PageInfo;
+  fields: ExtractedFields;
+  customFields: CustomFieldPayload[];
 }
 
-export interface JevRequestLike {
-  model?: string;
-  state: unknown;
-  questions: Record<string, unknown>;
+/**
+ * `CustomField` から Jev 提示用の情報だけを取り出す。
+ * 明示的に id / label / description のみを写すため、`value` は構造的に混入しない（要件 P1）。
+ * label が空の項目は Jev に提示できないので落とす。
+ */
+export function toCustomFieldPayload(customFields: CustomField[]): CustomFieldPayload[] {
+  return customFields
+    .filter((f) => f.label.trim().length > 0)
+    .map((f) => ({ id: f.id, label: f.label, description: f.description || undefined }));
 }
 
 export interface CallResult {
-  response: JevResponse;
+  response: JevAnswers;
   latencyMs: number;
 }
 
@@ -123,17 +110,15 @@ export interface CallOptions {
 
 /**
  * 1 リクエスト送信。429/529 は Retry-After を尊重して最大 2 回リトライする（要件 5.2 / 02 3.1）。
- * キー未設定・401・ネットワーク不通・タイムアウトはそれぞれ分類した JevError を投げる（要件 5.5）。
+ * ネットワーク不通・タイムアウト・混雑はそれぞれ分類した JevError を投げる（要件 5.5）。
  */
 export async function callJev(
-  request: JevRequestLike,
-  cfg: ProviderConfig,
+  request: InferRequest,
+  workerEndpoint?: string,
   options: CallOptions = {},
 ): Promise<CallResult> {
-  if (!cfg.apiKey) {
-    throw new JevError('no_api_key', 'API キーが設定されていません');
-  }
-  const body = JSON.stringify({ model: cfg.model, ...request });
+  const url = resolveInferUrl(workerEndpoint);
+  const body = JSON.stringify(request);
   if (options.debugLogging) {
     // eslint-disable-next-line no-console
     console.log('[auto-form-filler] Jev request', body);
@@ -144,14 +129,10 @@ export async function callJev(
   for (;;) {
     const started = performance.now();
     const res = await fetchWithTimeout(
-      cfg.url,
+      url,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${cfg.apiKey}`,
-          ...cfg.headers,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body,
       },
       TIMEOUT_MS,
@@ -159,7 +140,7 @@ export async function callJev(
     const latencyMs = performance.now() - started;
 
     if (res.ok) {
-      const json = (await res.json()) as JevResponse;
+      const json = (await res.json()) as JevAnswers;
       return { response: json, latencyMs };
     }
 
@@ -175,53 +156,23 @@ export async function callJev(
       continue;
     }
 
-    if (res.status === 401 || res.status === 403) {
-      throw new JevError('invalid_key', 'API キーが無効です');
-    }
     if (res.status === 429 || res.status === 529) {
       throw new JevError('rate_limited', '混雑しています。少し待って再試行してください');
+    }
+    // Worker は再送しても回答が不正だった場合に invalid_response を返す（要件 5.2）
+    if (await isInvalidResponseError(res)) {
+      throw new JevError('invalid_response', '判定結果が不正です');
     }
     throw new JevError('unknown', `Jev API エラー (HTTP ${res.status})`);
   }
 }
 
-/**
- * フィールド判定用の呼び出し。回答が不正なら 1 回だけ再送し、再度不正なら invalid_response エラー
- * （要件 5.2: 「不正なら 1 回だけ再送、再度不正ならエラー」）。
- */
-export async function callJevWithValidation(
-  request: JevRequestLike,
-  cfg: ProviderConfig,
-  fieldIds: string[],
-  criteriaKeys: string[],
-  options: CallOptions = {},
-): Promise<CallResult> {
-  let result = await callJev(request, cfg, options);
-  let check = validateResponse(result.response, fieldIds, criteriaKeys);
-  if (!check.valid) {
-    result = await callJev(request, cfg, options);
-    check = validateResponse(result.response, fieldIds, criteriaKeys);
-    if (!check.valid) {
-      throw new JevError('invalid_response', '判定結果が不正です');
-    }
+async function isInvalidResponseError(res: Response): Promise<boolean> {
+  try {
+    const body = (await res.json()) as { error?: string };
+    return body.error === 'invalid_response';
+  } catch {
+    return false;
   }
-  return result;
 }
 
-function buildPingRequest(): JevRequestLike {
-  return {
-    state: { ping: true },
-    questions: {
-      ping: {
-        type: 'noul',
-        instructions: 'Reply with a noul answer of 1 to confirm connectivity. This is a connection test, not real data.',
-      },
-    },
-  };
-}
-
-/** API 設定タブの「接続テスト」用。最小のリクエストを 1 回送るだけ */
-export async function testConnection(cfg: ProviderConfig, options: CallOptions = {}): Promise<{ latencyMs: number }> {
-  const { latencyMs } = await callJev(buildPingRequest(), cfg, options);
-  return { latencyMs };
-}

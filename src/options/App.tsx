@@ -4,12 +4,11 @@ import { useLocale } from '../shared/useLocale';
 import { DONATE_URL, REPO_URL } from '../shared/links';
 import type { OptionsTabId } from '../shared/types';
 import { useOptionsData } from './hooks/useOptionsData';
-import { ApiTab } from './tabs/ApiTab';
 import { BehaviorTab } from './tabs/BehaviorTab';
 import { PrivacyTab } from './tabs/PrivacyTab';
 import { ProfilesTab } from './tabs/ProfilesTab';
 
-const TABS: OptionsTabId[] = ['profiles', 'api', 'behavior', 'privacy'];
+const TABS: OptionsTabId[] = ['profiles', 'behavior', 'privacy'];
 
 function readInitialTab(): OptionsTabId {
   const hash = window.location.hash.replace('#', '');
@@ -60,7 +59,6 @@ export const App = () => {
         {tab === 'profiles' && (
           <ProfilesTab profiles={data.profiles} onPersistProfiles={data.persistProfiles} t={t} />
         )}
-        {tab === 'api' && <ApiTab settings={data.settings} onPersistSettings={data.persistSettings} t={t} />}
         {tab === 'behavior' && (
           <BehaviorTab settings={data.settings} onPersistSettings={data.persistSettings} t={t} />
         )}

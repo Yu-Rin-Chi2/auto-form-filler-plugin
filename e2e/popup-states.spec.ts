@@ -7,31 +7,9 @@ import type { MockServer } from './mock-server';
 const EC_SIGNUP = FORMS.find((f) => f.id === 'ec-signup');
 if (!EC_SIGNUP) throw new Error('ec-signup fixture not found');
 
-test.describe('ポップアップの4状態（要件 UI/UX 4章）', () => {
-  test('E2E-POPUP-01: API キー未設定なら警告と設定導線が表示される', async ({ context, extensionId }) => {
-    await seedStorage(context, extensionId, { profiles: [], settings: buildTestSettings({ apiKey: '' }) });
-    const popup = await context.newPage();
-    await popup.goto(`chrome-extension://${extensionId}/popup.html`);
-    await expect(popup.getByText('API キーが未設定です')).toBeVisible();
-    await expect(popup.getByRole('button', { name: 'API キーを設定する' })).toBeVisible();
-  });
-
-  test('E2E-POPUP-02: 「API キーを設定する」から API 設定タブが開く', async ({ context, extensionId }) => {
-    await seedStorage(context, extensionId, { profiles: [], settings: buildTestSettings({ apiKey: '' }) });
-    const popup = await context.newPage();
-    await popup.goto(`chrome-extension://${extensionId}/popup.html`);
-
-    const newPagePromise = context.waitForEvent('page');
-    await popup.getByRole('button', { name: 'API キーを設定する' }).click();
-    const optionsPage = await newPagePromise;
-    await optionsPage.waitForLoadState();
-    expect(optionsPage.url()).toContain('options.html#api');
-    await expect(optionsPage.getByRole('tab', { name: 'API 設定', selected: true })).toBeVisible();
-    await optionsPage.close();
-  });
-
-  test('E2E-POPUP-03: キーはあるがプロフィールがなければ案内が表示される', async ({ context, extensionId }) => {
-    await seedStorage(context, extensionId, { profiles: [], settings: buildTestSettings({ apiKey: 'sk-test' }) });
+test.describe('ポップアップの状態（要件 UI/UX 4章）', () => {
+  test('E2E-POPUP-03: プロフィールがなければ案内が表示される', async ({ context, extensionId }) => {
+    await seedStorage(context, extensionId, { profiles: [], settings: buildTestSettings() });
     const popup = await context.newPage();
     await popup.goto(`chrome-extension://${extensionId}/popup.html`);
     await expect(popup.getByText('プロフィールがありません')).toBeVisible();
@@ -39,7 +17,7 @@ test.describe('ポップアップの4状態（要件 UI/UX 4章）', () => {
   });
 
   test('E2E-POPUP-04: 「プロフィールを作成する」からプロフィールタブが開く', async ({ context, extensionId }) => {
-    await seedStorage(context, extensionId, { profiles: [], settings: buildTestSettings({ apiKey: 'sk-test' }) });
+    await seedStorage(context, extensionId, { profiles: [], settings: buildTestSettings() });
     const popup = await context.newPage();
     await popup.goto(`chrome-extension://${extensionId}/popup.html`);
 
@@ -52,11 +30,11 @@ test.describe('ポップアップの4状態（要件 UI/UX 4章）', () => {
     await optionsPage.close();
   });
 
-  test('E2E-POPUP-05: キー・プロフィールとも揃っていれば通常状態になる', async ({ context, extensionId }) => {
+  test('E2E-POPUP-05: プロフィールがあれば通常状態になる', async ({ context, extensionId }) => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test' }),
+      settings: buildTestSettings(),
     });
     const popup = await context.newPage();
     await popup.goto(`chrome-extension://${extensionId}/popup.html`);
@@ -68,7 +46,7 @@ test.describe('ポップアップの4状態（要件 UI/UX 4章）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test' }),
+      settings: buildTestSettings(),
       lastResult: {
         url: 'https://shop.example.jp/signup',
         profileId: profile.id,
@@ -116,7 +94,7 @@ test.describe('ポップアップ: 実行中→完了の遷移と詳細表示（
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
@@ -138,7 +116,7 @@ test.describe('ポップアップ: 実行中→完了の遷移と詳細表示（
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);

@@ -34,7 +34,7 @@ test.describe('原則検証（要件 00-concept P1〜P3、横断・最重要）'
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/payment.html`);
@@ -53,7 +53,7 @@ test.describe('原則検証（要件 00-concept P1〜P3、横断・最重要）'
     expect(cardNumberOutline).toBe('');
 
     // カード欄は Jev にも送られていない（除外は content script 内で行う）
-    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/systemone'));
+    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/infer'));
     const combined = JSON.stringify(jevRequests.map((r) => r.body));
     expect(combined).not.toContain('cc-number');
     expect(combined).not.toContain('cc-csc');
@@ -71,7 +71,7 @@ test.describe('原則検証（要件 00-concept P1〜P3、横断・最重要）'
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const optionsPage = await context.newPage();
@@ -106,14 +106,14 @@ test.describe('原則検証（要件 00-concept P1〜P3、横断・最重要）'
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/long-text.html`);
     await clickRunButton(popupPage, 'このページに入力');
     await expect(popupPage.locator('.summary-card, .state-card')).toBeVisible({ timeout: 15000 });
 
-    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/systemone'));
+    const jevRequests = server.requests.filter((r) => r.path.includes('/v1/infer'));
     const combined = JSON.stringify(jevRequests.map((r) => r.body));
     expect(combined).not.toContain('ELEPHANT-MARKER-UNIQUE-TOKEN-0001');
     expect(combined).not.toContain('これを何度も繰り返して長さを稼ぎます');

@@ -42,17 +42,17 @@ test.describe('エラーハンドリング（要件 5.5）', () => {
     await server.close();
   });
 
-  test('E2E-ERROR-01: 401 は「キーが無効です」と表示される', async ({ context, extensionId }) => {
-    server.setJevHandler(() => ({ status: 401, body: { error: 'invalid api key' } }));
+  test('E2E-ERROR-01: Worker が 502 を返すと汎用エラーが表示される', async ({ context, extensionId }) => {
+    server.setJevHandler(() => ({ status: 502, body: { error: 'upstream_error' } }));
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-invalid', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
     await clickRunButton(popupPage, 'このページに入力');
-    await expect(popupPage.getByText('キーが無効です')).toBeVisible({ timeout: 15000 });
+    await expect(popupPage.getByText('予期しないエラーが発生しました')).toBeVisible({ timeout: 15000 });
 
     await formPage.close();
     await popupPage.close();
@@ -70,7 +70,7 @@ test.describe('エラーハンドリング（要件 5.5）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
@@ -94,7 +94,7 @@ test.describe('エラーハンドリング（要件 5.5）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
@@ -120,7 +120,7 @@ test.describe('エラーハンドリング（要件 5.5）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
@@ -131,50 +131,28 @@ test.describe('エラーハンドリング（要件 5.5）', () => {
     await popupPage.close();
   });
 
-  test('E2E-ERROR-07: 不正な回答が2回続くと「判定結果が不正です」になる（再送は1回のみ）', async ({
+  // 「不正なら1回だけ再送」は中継サーバー側の責務になったため、拡張から見えるのは
+  // 再送し尽くした結果の 502 invalid_response だけになった。再送そのものは
+  // workers/src の runInference のユニットテスト（UNIT-RES-06/07）で検証している。
+  test('E2E-ERROR-07: 中継サーバーが invalid_response を返すと「判定結果が不正です」になる', async ({
     context,
     extensionId,
   }) => {
     let requestCount = 0;
-    server.setJevHandler((body) => {
+    server.setJevHandler(() => {
       requestCount++;
-      return buildInvalidAnswerHandler()(body);
+      return { status: 502, body: { error: 'invalid_response' } };
     });
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
     await clickRunButton(popupPage, 'このページに入力');
     await expect(popupPage.getByText('判定結果が不正です')).toBeVisible({ timeout: 15000 });
-    expect(requestCount).toBe(2); // 初回 + 再送1回のみ（再々送はしない）
-
-    await formPage.close();
-    await popupPage.close();
-  });
-
-  test('E2E-ERROR-08: 不正な回答の後、再送で妥当な回答が返れば正常に完了する', async ({
-    context,
-    extensionId,
-  }) => {
-    let requestCount = 0;
-    server.setJevHandler((body) => {
-      requestCount++;
-      if (requestCount === 1) return buildInvalidAnswerHandler()(body);
-      return buildAllNoneHandler()(body);
-    });
-    const profile = buildTestProfile();
-    await seedStorage(context, extensionId, {
-      profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
-    });
-
-    const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
-    await clickRunButton(popupPage, 'このページに入力');
-    await expect(popupPage.getByText(/件入力しました/)).toBeVisible({ timeout: 15000 });
-    expect(requestCount).toBe(2);
+    expect(requestCount).toBe(1); // 拡張側では再送しない
 
     await formPage.close();
     await popupPage.close();
@@ -194,7 +172,7 @@ test.describe('エラーハンドリング（要件 5.5）', () => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
-      settings: buildTestSettings({ apiKey: 'sk-test', baseUrl: server.jevUrl }),
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
     });
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);

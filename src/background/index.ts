@@ -2,9 +2,7 @@
  * Service Worker エントリポイント。メッセージルータ、onInstalled、キーボードショートカット。
  */
 import { getSettings } from '../shared/storage';
-import { JevError } from '../shared/types';
-import type { OptionsTabId, RuntimeRequest, TestConnectionRequest, TestConnectionResponse } from '../shared/types';
-import { resolveProviderConfig, testConnection } from './jev/client';
+import type { OptionsTabId, RuntimeRequest } from '../shared/types';
 import { runFill } from './orchestrate';
 
 const OPTIONS_URL_PATTERN = 'options.html*';
@@ -27,32 +25,12 @@ async function openOptions(tab?: OptionsTabId): Promise<void> {
   }
 }
 
-async function handleTestConnection(message: TestConnectionRequest): Promise<TestConnectionResponse> {
-  const settings = await getSettings();
-  const cfg = resolveProviderConfig({
-    provider: message.provider,
-    apiKey: message.apiKey,
-    model: message.model,
-    baseUrl: message.baseUrl,
-  });
-  try {
-    const { latencyMs } = await testConnection(cfg, { debugLogging: settings.debugLogging });
-    return { ok: true, latencyMs };
-  } catch (e) {
-    const err = e instanceof JevError ? e : new JevError('unknown', String(e));
-    return { ok: false, error: err.message, errorKind: err.kind };
-  }
-}
-
 chrome.runtime.onMessage.addListener((message: RuntimeRequest, _sender, sendResponse) => {
   if (!message || typeof message !== 'object') return undefined;
 
   switch (message.type) {
     case 'FILL_REQUEST':
       runFill(message.profileId).then(sendResponse);
-      return true;
-    case 'TEST_CONNECTION':
-      handleTestConnection(message).then(sendResponse);
       return true;
     case 'OPEN_OPTIONS':
       openOptions(message.tab).then(() => sendResponse({ ok: true }));
@@ -62,10 +40,11 @@ chrome.runtime.onMessage.addListener((message: RuntimeRequest, _sender, sendResp
   }
 });
 
-// 初回インストール時にオプションページを開く（要件 4.2 / F-13）
+// 初回インストール時にオプションページを開く（要件 4.2 / F-13）。
+// API キー設定が不要になったので、最初にやることはプロフィール入力
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
-    void openOptions('api');
+    void openOptions('profiles');
   }
 });
 

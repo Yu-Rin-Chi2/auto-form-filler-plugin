@@ -202,16 +202,13 @@ export interface Profile {
 // 設定（要件 2.5）
 // ---------------------------------------------------------------------------
 
-export type JevProvider = 'openrouter' | 'typesafe';
-
 export interface Settings {
-  provider: JevProvider;
-  /** ユーザー自身の API キー。chrome.storage.local のみに保存 */
-  apiKey: string;
-  /** 既定モデルからの上書き */
-  model?: string;
-  /** プロバイダの既定 baseUrl からの上書き（詳細設定） */
-  baseUrl?: string;
+  /**
+   * Jev プロキシ Worker の向き先。未設定なら既定のエンドポイントを使う。
+   * UI からは変更できない。E2E がモックサーバーを指すためと、
+   * 自分で Worker を建てて使いたい利用者のための逃げ道として持つ。
+   */
+  workerEndpoint?: string;
   /** ショートカット実行に使う直近のプロフィール ID */
   lastProfileId: string | null;
   /** 確信度の採用閾値。既定 0.7 */
@@ -229,10 +226,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  provider: 'openrouter',
-  apiKey: '',
-  model: undefined,
-  baseUrl: undefined,
+  workerEndpoint: undefined,
   lastProfileId: null,
   confidenceThreshold: 0.7,
   highlightFilled: true,
@@ -415,39 +409,34 @@ export interface FillOutcomeMessageResponse {
   details: FieldOutcome[];
 }
 
-export interface TestConnectionRequest {
-  type: 'TEST_CONNECTION';
-  provider: JevProvider;
-  apiKey: string;
-  model?: string;
-  baseUrl?: string;
-}
-export interface TestConnectionResponse {
-  ok: boolean;
-  latencyMs?: number;
-  error?: string;
-  errorKind?: JevErrorKind;
-}
-
 export interface OpenOptionsRequest {
   type: 'OPEN_OPTIONS';
   tab?: OptionsTabId;
 }
 
-export type RuntimeRequest =
-  | FillRequestMessage
-  | TestConnectionRequest
-  | OpenOptionsRequest;
+export type RuntimeRequest = FillRequestMessage | OpenOptionsRequest;
 
-export type OptionsTabId = 'profiles' | 'api' | 'behavior' | 'privacy';
+export type OptionsTabId = 'profiles' | 'behavior' | 'privacy';
 
 // ---------------------------------------------------------------------------
 // Jev エラー分類（要件 5.5）
 // ---------------------------------------------------------------------------
 
+/** プロキシ Worker から受け取る判定結果。組み立てと検証は Worker 側（`workers/src/`） */
+export interface ChoiceAnswer {
+  type?: string;
+  choice: string;
+  confidence: number;
+  probabilities?: Record<string, number>;
+}
+
+export interface JevAnswers {
+  model?: string;
+  answers: Record<string, ChoiceAnswer | undefined>;
+  usage?: { input_tokens: number; output_tokens: number };
+}
+
 export type JevErrorKind =
-  | 'no_api_key'
-  | 'invalid_key'
   | 'rate_limited'
   | 'network'
   | 'timeout'

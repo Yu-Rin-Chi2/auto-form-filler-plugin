@@ -6,10 +6,11 @@
  *   TYPESAFE_API_KEY                             → https://api.typesafe.ai/v1/systemone
  *   OPENROUTER_API_KEY                           → https://openrouter.ai/api/v1/systemone
  *   CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN → https://api.cloudflare.com/client/v4/accounts/{id}/ai/run
- *   JEV_PROVIDER=typesafe|openrouter|cloudflare で明示も可（省略時は設定されているキーから推定）
+ *   WORKER_ENDPOINT                              → 拡張が使うプロキシ Worker（認証不要）
+ *   JEV_PROVIDER=typesafe|openrouter|cloudflare|worker で明示も可（省略時は設定されているキーから推定）
  */
 
-export type Provider = 'typesafe' | 'openrouter' | 'cloudflare';
+export type Provider = 'typesafe' | 'openrouter' | 'cloudflare' | 'worker';
 
 export interface ChoiceQuestion {
   type: 'choice';
@@ -65,12 +66,26 @@ export function resolveProvider(): ProviderConfig {
   const openrouterKey = process.env.OPENROUTER_API_KEY?.trim();
   const cfAccount = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
   const cfToken = process.env.CLOUDFLARE_API_TOKEN?.trim();
+  const workerEndpoint = process.env.WORKER_ENDPOINT?.trim();
   const explicit = process.env.JEV_PROVIDER?.trim() as Provider | undefined;
 
   const provider: Provider =
     explicit ??
-    (typesafeKey ? 'typesafe' : openrouterKey ? 'openrouter' : cfAccount && cfToken ? 'cloudflare' : 'typesafe');
+    (workerEndpoint
+      ? 'worker'
+      : typesafeKey
+        ? 'typesafe'
+        : openrouterKey
+          ? 'openrouter'
+          : cfAccount && cfToken
+            ? 'cloudflare'
+            : 'typesafe');
 
+  if (provider === 'worker') {
+    if (!workerEndpoint) throw new Error('WORKER_ENDPOINT が設定されていません');
+    // Worker がモデルと認証を持つため、ここではキーもモデル名も送らない
+    return { provider, url: workerEndpoint, model: 'typesafe/jev', apiKey: '', headers: {} };
+  }
   if (provider === 'typesafe') {
     if (!typesafeKey) throw new Error('TYPESAFE_API_KEY が設定されていません');
     return {
@@ -127,6 +142,9 @@ function buildBody(cfg: ProviderConfig, req: JevRequest): string {
   if (cfg.provider === 'cloudflare') {
     return JSON.stringify({ model: cfg.model, input: { state: req.state, questions: req.questions } });
   }
+  if (cfg.provider === 'worker') {
+    return JSON.stringify({ state: req.state, questions: req.questions });
+  }
   return JSON.stringify({ model: cfg.model, ...req });
 }
 
@@ -144,7 +162,7 @@ async function postOnce(cfg: ProviderConfig, url: string, req: JevRequest): Prom
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${cfg.apiKey}`,
+      ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}),
       ...cfg.headers,
     },
     body: buildBody(cfg, req),

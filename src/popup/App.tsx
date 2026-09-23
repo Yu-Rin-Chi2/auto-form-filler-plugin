@@ -10,8 +10,6 @@ import { usePopupState } from './hooks/usePopupState';
 import { openOptions } from './openOptions';
 
 const ERROR_KEY_MAP: Record<JevErrorKind, MessageKey> = {
-  no_api_key: 'popup.error.no_api_key',
-  invalid_key: 'popup.error.invalid_key',
   rate_limited: 'popup.error.rate_limited',
   network: 'popup.error.network',
   timeout: 'popup.error.timeout',
@@ -50,24 +48,6 @@ export const App = () => {
     return (
       <div className="popup">
         {header}
-      </div>
-    );
-  }
-
-  if (state.phase === 'no_key') {
-    return (
-      <div className="popup">
-        {header}
-        <div className="state-card" role="status">
-          <span className="state-card__icon" aria-hidden="true">
-            ⚠
-          </span>
-          <p className="state-card__title">{t('popup.noKeyTitle')}</p>
-          <p className="state-card__body">{t('popup.noKeyBody')}</p>
-          <button type="button" className="button button--primary" onClick={() => void openOptions('api')}>
-            {t('popup.noKeyButton')}
-          </button>
-        </div>
       </div>
     );
   }

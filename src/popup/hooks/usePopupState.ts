@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getLastResult, getLastResultDetail, getProfiles, getSettings } from '../../shared/storage';
 import type { FieldOutcome, FillOutcomeMessageResponse, FillResult, Profile, Settings } from '../../shared/types';
 
-export type PopupPhase = 'loading' | 'no_key' | 'no_profile' | 'ready';
+export type PopupPhase = 'loading' | 'no_profile' | 'ready';
 
 export interface PopupState {
   phase: PopupPhase;
@@ -90,9 +90,7 @@ export function usePopupState(): PopupState {
 
   let phase: PopupPhase = 'loading';
   if (loaded) {
-    if (!settings?.apiKey) phase = 'no_key';
-    else if (profiles.length === 0) phase = 'no_profile';
-    else phase = 'ready';
+    phase = profiles.length === 0 ? 'no_profile' : 'ready';
   }
 
   return {

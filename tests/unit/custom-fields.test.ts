@@ -3,11 +3,12 @@
  * 銀行口座・website の解決もここで確認する。
  */
 import { describe, expect, it } from 'vitest';
-import { buildJevRequest } from '../../src/background/jev/build-request';
+import { buildJevRequest } from '../../workers/src/build-request';
+import { toCustomFieldPayload } from '../../src/background/jev/client';
 import { resolveFill } from '../../src/background/resolve/resolve';
 import { matchAccountType } from '../../src/background/resolve/normalize';
 import { resolveProfileFieldValue } from '../../src/shared/derive';
-import { buildProfileDescriptions, describeCustomField, PROFILE_FIELD_DESCRIPTIONS } from '../../src/shared/profile-fields';
+import { buildProfileDescriptions, describeCustomField, PROFILE_FIELD_DESCRIPTIONS } from '../../workers/src/profile-fields';
 import {
   createCustomField,
   createEmptyProfileFields,
@@ -61,13 +62,27 @@ describe('createCustomField / describeCustomField / buildProfileDescriptions', (
   });
 });
 
+describe('toCustomFieldPayload: Worker へ値を送らない（P1 最重要）', () => {
+  it('id / label / description のみが残り、value は含まれない', () => {
+    const payload = toCustomFieldPayload([TWITTER]);
+    expect(payload).toEqual([
+      { id: 'custom_ab12cd34', label: 'X（Twitter）の ID', description: 'Twitter handle starting with @' },
+    ]);
+    expect(JSON.stringify(payload)).not.toContain('@example_user');
+    expect(payload[0]).not.toHaveProperty('value');
+  });
+
+  it('label が空の項目は送らない', () => {
+    expect(toCustomFieldPayload([{ ...TWITTER, label: '  ' }])).toEqual([]);
+  });
+});
+
 describe('buildJevRequest: ユーザー定義項目', () => {
   it('state.profile と各 question の criteria にユーザー定義項目のキーが含まれ、値は含まれない', () => {
     const descriptions = buildProfileDescriptions([TWITTER]);
     const { request } = buildJevRequest(
       { url: 'https://example.com/x', title: 't', lang: 'ja' },
       { f0: extracted('Twitter ID') },
-      'typesafe/jev-1.13',
       descriptions,
     );
     expect(request).not.toBeNull();

@@ -33,8 +33,16 @@ export async function saveProfiles(profiles: Profile[]): Promise<void> {
   await setItems({ [STORAGE_KEYS.profiles]: profiles });
 }
 
+/** BYOK 時代の設定キー。見つけたら消す（古い API キーを端末に残したままにしないため） */
+const LEGACY_SETTINGS_KEYS = ['provider', 'apiKey', 'model', 'baseUrl'] as const;
+
 export async function getSettings(): Promise<Settings> {
-  const stored = await getItem<Partial<Settings>>(STORAGE_KEYS.settings, {});
+  const stored = await getItem<Partial<Settings> & Record<string, unknown>>(STORAGE_KEYS.settings, {});
+  const legacy = LEGACY_SETTINGS_KEYS.filter((key) => key in stored);
+  if (legacy.length > 0) {
+    for (const key of legacy) delete stored[key];
+    await setItems({ [STORAGE_KEYS.settings]: stored });
+  }
   return { ...DEFAULT_SETTINGS, ...stored };
 }
 
