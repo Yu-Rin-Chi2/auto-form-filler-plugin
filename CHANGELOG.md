@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-23
+
+住所欄の入力を中心に、実際のサイトで報告された不具合を修正しました。
+
 ### Added
 
 - 住所欄の分け方（1 欄 / 都道府県 + 1 欄 / 都道府県 + 市区 + 番地〜建物名 / 4 分割 / 住所1 + 住所2）に合わせて、各欄に入れる範囲を自動で決めるようにしました
@@ -82,7 +86,8 @@ GitHub Release の `v0.1.0` zip は初期コミット時点のビルドで、下
 - フォームの自動送信は行わない
 - 権限は `activeTab` / `scripting` / `storage` と Jev API ホストのみ。iframe 用のホスト権限はユーザーが明示的に許可したサイトに限る
 
-[Unreleased]: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/releases/tag/v0.1.0

@@ -27,7 +27,8 @@ if (manifest.version !== pkg.version) {
 }
 
 // E2E 用の host_permissions が混入していないことを確認する（提出物の権限モデルを守る）
-const ALLOWED_HOSTS = /^https:\/\/(api\.typesafe\.ai|openrouter\.ai)\/\*$/;
+// 既定の中継サーバー（src/shared/config.ts の DEFAULT_WORKER_ORIGIN）のみ
+const ALLOWED_HOSTS = /^https:\/\/formfill\.yrctool\.stream\/\*$/;
 const badHost = (manifest.host_permissions ?? []).find((h) => !ALLOWED_HOSTS.test(h));
 if (badHost) {
   throw new Error(`[package] 想定外の host_permissions が含まれています: ${badHost}`);
