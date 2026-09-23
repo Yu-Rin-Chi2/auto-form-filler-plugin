@@ -218,6 +218,7 @@ async function runFillInner(profileId: string): Promise<FillOutcome> {
   });
 
   // 入力はフレームごとに分けて送る（各フレームの content script は自分の局所 ID しか知らない）
+  const rejected = new Set<string>();
   for (const [frameId, frameAssignments] of splitAssignmentsByFrame(assignments, extraction.locations)) {
     const applyRequest: ApplyFillRequest = {
       type: 'APPLY_FILL',
@@ -225,10 +226,21 @@ async function runFillInner(profileId: string): Promise<FillOutcome> {
       highlight: settings.highlightFilled,
     };
     try {
-      await chrome.tabs.sendMessage<ApplyFillRequest, ApplyFillResponse>(tabId, applyRequest, { frameId });
+      const applied = await chrome.tabs.sendMessage<ApplyFillRequest, ApplyFillResponse>(tabId, applyRequest, { frameId });
+      for (const localId of applied?.failed ?? []) {
+        const globalId = Object.keys(extraction.locations).find((id) => {
+          const loc = extraction.locations[id];
+          return loc?.frameId === frameId && loc.localId === localId;
+        });
+        if (globalId) rejected.add(globalId);
+      }
     } catch {
       // フレームが消えていた場合。他のフレームの入力は続行する
     }
+  }
+  // ページ側が値を受け付けなかった欄は「入力済み」にしない
+  for (const o of outcomes) {
+    if (o.reason === 'filled' && rejected.has(o.fieldId)) o.reason = 'skipped_rejected';
   }
 
   // 結果トーストは集計した 1 件だけを最上位フレームに表示する

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { extractFields } from '../../src/content/extract';
 import { highlightElement } from '../../src/content/highlight';
-import { applyFill } from '../../src/content/inject';
+import { applyFill, waitForOverwriteGuard } from '../../src/content/inject';
 import { resolveFill } from '../../src/background/resolve/resolve';
 import { createEmptyProfileFields } from '../../src/shared/profile-schema';
 
@@ -212,5 +212,91 @@ describe('applyFill: 既存値フィールド・checkbox は入力されない�
     await applyFill(assignments, false);
     const checkbox = document.querySelector('input[type=checkbox]') as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
+  });
+});
+
+describe('applyFill: ブラウザが受け付けない値', () => {
+  it('type=number にハイフン入りの値を入れようとして空になった場合は失敗扱い（input イベントも出さない）', async () => {
+    stubRaf();
+    setBody(`<label>電話番号<input type="number" name="tel"></label>`);
+    const { fields } = extractFields(document);
+    const id = Object.keys(fields)[0] as string;
+    const input = document.querySelector('input') as HTMLInputElement;
+    const onInput = vi.fn();
+    input.addEventListener('input', onInput);
+    const result = await applyFill({ [id]: { kind: 'text', value: '080-1234-5678' } }, false);
+    expect(input.value).toBe('');
+    expect(result).toEqual({ filled: [], failed: [id] });
+    expect(onInput).not.toHaveBeenCalled();
+  });
+
+  it('ハイフンを抜いた値なら type=number に入る', async () => {
+    stubRaf();
+    setBody(`<label>電話番号<input type="number" name="tel"></label>`);
+    const { fields } = extractFields(document);
+    const id = Object.keys(fields)[0] as string;
+    const result = await applyFill({ [id]: { kind: 'text', value: '08012345678' } }, false);
+    expect((document.querySelector('input') as HTMLInputElement).value).toBe('08012345678');
+    expect(result.filled).toEqual([id]);
+  });
+});
+
+describe('applyFill: ページのスクリプトによる上書き（郵便番号からの住所補完）', () => {
+  const FAST_GUARD = { durationMs: 300, intervalMs: 20 };
+
+  /** jpostal 相当: 郵便番号欄の change を受けて、少し遅れて町名だけを書き込む */
+  function setupZipAutofill(delayMs: number, town: string) {
+    setBody(`
+      <label>郵便番号<input type="text" name="zip"></label>
+      <label>町名・番地<input type="text" name="address"></label>
+    `);
+    const zip = document.querySelector('input[name="zip"]') as HTMLInputElement;
+    const address = document.querySelector('input[name="address"]') as HTMLInputElement;
+    zip.addEventListener('change', () => setTimeout(() => (address.value = town), delayMs));
+    return { zip, address };
+  }
+
+  it('入力後に町名だけで上書きされたら、入れた値に戻す（実サイトで報告された事例）', async () => {
+    stubRaf();
+    const { address } = setupZipAutofill(60, '博多駅前');
+    const { fields } = extractFields(document);
+    const [zipId, addrId] = Object.keys(fields) as [string, string];
+    await applyFill(
+      { [zipId]: { kind: 'text', value: '812-0011' }, [addrId]: { kind: 'text', value: '博多駅前1-2-3 テストビル5階' } },
+      false,
+      FAST_GUARD,
+    );
+    await waitForOverwriteGuard();
+    expect(address.value).toBe('博多駅前1-2-3 テストビル5階');
+  });
+
+  it('表記の違いだけの整形（ハイフン除去など）は受け入れる', async () => {
+    stubRaf();
+    setBody(`<label>郵便番号<input type="text" name="zip"></label>`);
+    const zip = document.querySelector('input') as HTMLInputElement;
+    zip.addEventListener('change', () => setTimeout(() => (zip.value = zip.value.replace('-', '')), 30));
+    const { fields } = extractFields(document);
+    const id = Object.keys(fields)[0] as string;
+    await applyFill({ [id]: { kind: 'text', value: '812-0011' } }, false, FAST_GUARD);
+    await waitForOverwriteGuard();
+    expect(zip.value).toBe('8120011');
+  });
+
+  it('入れ直すのは 1 回だけ（書き換え続けるスクリプトと取り合いにしない）', async () => {
+    stubRaf();
+    setBody(`<label>町名<input type="text" name="address"></label>`);
+    const address = document.querySelector('input') as HTMLInputElement;
+    let writes = 0;
+    address.addEventListener('change', () => {
+      writes++;
+      setTimeout(() => (address.value = `上書き${writes}`), 30);
+    });
+    const { fields } = extractFields(document);
+    const id = Object.keys(fields)[0] as string;
+    await applyFill({ [id]: { kind: 'text', value: '番地1-2-3' } }, false, FAST_GUARD);
+    await waitForOverwriteGuard();
+    await new Promise((r) => setTimeout(r, FAST_GUARD.durationMs));
+    expect(writes).toBe(2);
+    expect(address.value).toBe('上書き2');
   });
 });

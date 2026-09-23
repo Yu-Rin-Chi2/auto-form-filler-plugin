@@ -257,7 +257,9 @@ export type FieldOutcomeReason =
   | 'skipped_existing_value'
   | 'skipped_over_limit'
   | 'skipped_split_mismatch'
-  | 'skipped_invalid_response';
+  | 'skipped_invalid_response'
+  /** 注入したがページ側が値を受け付けなかった（type=number にハイフン入り等） */
+  | 'skipped_rejected';
 
 export interface FieldOutcome {
   fieldId: string;
