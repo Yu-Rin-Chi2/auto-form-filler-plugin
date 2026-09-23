@@ -4,6 +4,27 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-23
+
+**API キーの設定が不要になりました。** インストール後、プロフィールを登録すればすぐ使えます。
+
+### Changed
+
+- Jev の呼び出しを、開発者が運用する中継サーバー（Cloudflare Workers、`workers/`）経由に変更。利用者が OpenRouter / TypeSafe で API キーを取得・設定する必要はなくなりました。利用は無料です
+- 設定画面の「API 設定」タブを廃止（プロバイダ選択・キー入力・接続テスト・モデル名やURLの上書き）
+- 権限の `host_permissions` を Jev の各社ホストから中継サーバー（`formfill.yrctool.stream`）1 つに変更
+- 初回インストール時に開くタブを「API 設定」から「プロフィール」に変更
+
+### Removed
+
+- 旧バージョンで端末に保存された API キー・プロバイダ設定は、更新後の初回起動時に自動的に削除されます。OpenRouter に残高がある場合、この拡張では消費されなくなります
+
+### Security
+
+- 中継サーバーはリクエストの内容を記録しません。過剰なアクセスを防ぐため接続元 IP を参照して回数制限のみ行います（保存はしません）
+- 判定の指示文と選択肢は中継サーバー側で組み立てます。呼び出し側が判定内容を指定できないため、フォーム入力以外の用途には使えません
+- プロフィールの値を送らない保証（原則 P1）を 2 層に強化しました。送信用の型に値の置き場を作らないことと、中継サーバー側で通すキーをホワイトリストで絞ること
+
 ## [0.2.0] - 2026-09-22
 
 GitHub Release の `v0.1.0` zip は初期コミット時点のビルドで、下記 0.1.0 に記載の一部機能（iframe 対応・カスタム項目・SNS・銀行口座・住所カナ）を含んでいませんでした。このリリースにはそれらすべてが含まれます。
@@ -49,6 +70,7 @@ GitHub Release の `v0.1.0` zip は初期コミット時点のビルドで、下
 - フォームの自動送信は行わない
 - 権限は `activeTab` / `scripting` / `storage` と Jev API ホストのみ。iframe 用のホスト権限はユーザーが明示的に許可したサイトに限る
 
-[Unreleased]: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/releases/tag/v0.1.0
