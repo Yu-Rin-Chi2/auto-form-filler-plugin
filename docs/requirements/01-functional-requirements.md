@@ -270,18 +270,23 @@ interface ExtractedField {
   required?: boolean;
   maxlength?: number;
   section?: string;         // 直近の見出し（h1–h6、legend、th）
+  hints?: string[];         // 項目の意味を表す class 名（例: zip / address_one）。5.1.5
   options?: string[];       // select / radio。先頭 8 件 + 件数
   currentValue?: 'empty' | 'filled';  // 既入力かどうか。値そのものは送らない
 }
 ```
 
-**5.1.1 ラベル解決の優先順位**: `aria-labelledby` → `aria-label` → `<label for>` → 祖先 `<label>` → 同じ `<tr>` の `<th>` / 直前の `<dt>` → 直前の兄弟テキスト → `placeholder` → `title` → `name`
+`currentValue` の判定で、select は選ばれている option の表示が空・案内文（「選択してください」「---」等）なら `empty` とする（value や `selected` 属性の有無は問わない。2026-09-23 追加）。
+
+**5.1.1 ラベル解決の優先順位**: `aria-labelledby` → `aria-label` → `<label for>` → 祖先 `<label>` → 同じ `<tr>` の `<th>` / 直前の `<dt>` → 直前の兄弟テキスト → `placeholder` → `title` → `name`。`name` は英字 3 文字以上の並びか非 ASCII 文字を含む場合のみ採用し、自動採番の ID（`893021_217038pi_…` 等）は使わない
 
 **5.1.2 参照キー**: 抽出順に `f0, f1, ...` を振り、`fields` は**配列ではなく `{ f0: {...} }` のオブジェクト**にする（PoC で配列インデックス参照が 10 番目以降でずれる現象を確認済み）。content script 側で DOM 要素との対応表を保持する。
 
 **5.1.3 radio グループ**: 同じ `name` の radio は 1 フィールドにまとめ、`options` に各ラベルを入れる。
 
 **5.1.4 上限**: 60 フィールドを超える場合は先頭 60 件（Jev のトークン上限 32k に対して余裕を持たせる）。超過分はスキップとして件数報告。
+
+**5.1.5 hints（2026-09-23 追加）**: 要素自身から祖先 3 段までさかのぼり、項目の意味を表していそうな class 名が見つかった最初の要素の class を最大 4 件入れる。数字を含むもの、構成語がすべてレイアウト・状態用（`form-control` / `formInputInner` / `col-sm-9` / `pd-text` 等）のものは除く。ページの JS がラベルと入力欄を切り離すフォーム（Pardot 等）への対策。Worker 側も英字始まりの ASCII 識別子（`^[A-Za-z][A-Za-z0-9_-]{1,39}$`）以外を落とす。
 
 ### 5.2 判定リクエスト
 

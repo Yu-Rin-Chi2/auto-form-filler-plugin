@@ -64,3 +64,17 @@ describe('sanitizePage', () => {
     });
   });
 });
+
+describe('sanitizeFields: hints', () => {
+  it('英字始まりの識別子だけを通し、日本語・数字始まり・記号入りは落とす', () => {
+    const out = sanitizeFields({
+      f0: { tag: 'input', label: 'a', hints: ['zip', 'address_one', '鈴木', '09012345678', 'a@b.jp', 1] },
+    });
+    expect(out?.f0?.hints).toEqual(['zip', 'address_one']);
+  });
+
+  it('通るものがなければ undefined', () => {
+    expect(sanitizeFields({ f0: { tag: 'input', label: 'a', hints: ['鈴木'] } })?.f0?.hints).toBeUndefined();
+    expect(sanitizeFields({ f0: { tag: 'input', label: 'a', hints: 'zip' } })?.f0?.hints).toBeUndefined();
+  });
+});

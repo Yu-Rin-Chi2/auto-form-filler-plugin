@@ -308,6 +308,8 @@ export interface ExtractedField {
   required?: boolean;
   maxlength?: number;
   section?: string;
+  /** 項目の意味を表していそうな class 名（例: `zip`）。ページ側の属性で、利用者の値は含まない */
+  hints?: string[];
   options?: string[];
   currentValue?: 'empty' | 'filled';
 }

@@ -179,3 +179,83 @@ describe('extractFields: 既存値の検出（E2E-EDGE-04 の前提確認）', (
     expect(fields.f1?.currentValue).toBe('empty');
   });
 });
+
+/**
+ * 実サイト（appreco.com のお問い合わせ、Pardot の iframe）で報告された事例。
+ * ページの JS が都道府県・市区郡・番地の入力欄を「住所」行へ移し、元の行（label ごと）を削除した後の DOM。
+ */
+const PARDOT_ADDRESS_HTML = `
+  <form>
+    <div class="form-group row form-field zip pd-text required">
+      <div class="formHeading col-sm-3">
+        <label class="field-label col-form-label" for="zip_id">住所</label>
+      </div>
+      <div class="col-sm-9">
+        <div class="formInputOuter zip">
+          <div class="formInputInner zip">
+            <input type="text" name="893021_217035pi_893021_217035" id="zip_id" class="text form-control" maxlength="32" placeholder="422-8067">
+          </div>
+          <div class="formInputInner state">
+            <select name="893021_217038pi_893021_217038" id="state_id" class="select form-control">
+              <option value="2125539" selected="selected"></option>
+              <option value="2125542">北海道</option>
+              <option value="2125605">静岡県</option>
+            </select>
+          </div>
+          <div class="formInputInner city">
+            <input type="text" name="893021_217041pi_893021_217041" id="city_id" class="text form-control" maxlength="40" placeholder="静岡市">
+          </div>
+          <div class="formInputInner address_one">
+            <input type="text" name="893021_217044pi_893021_217044" id="addr_id" class="text form-control" maxlength="255" placeholder="駿河区南町11番1号 静銀・あいち銀静岡駅南ビル6階">
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+`;
+
+describe('extractFields: ラベルが切り離された住所欄（Pardot）', () => {
+  it('入力欄を包む要素の class 名を hints として拾う（隣の項目の class は混ぜない）', () => {
+    setBody(PARDOT_ADDRESS_HTML);
+    const { fields } = extractFields(document);
+    expect(fields.f0?.hints).toEqual(['zip']);
+    expect(fields.f1?.hints).toEqual(['state']);
+    expect(fields.f2?.hints).toEqual(['city']);
+    expect(fields.f3?.hints).toEqual(['address_one']);
+  });
+
+  it('value はあるが表示が空の option が selected でも、select は未入力扱い', () => {
+    setBody(PARDOT_ADDRESS_HTML);
+    const { fields } = extractFields(document);
+    expect(fields.f1?.currentValue).toBe('empty');
+  });
+
+  it('自動採番の name はラベルに使わない', () => {
+    setBody(PARDOT_ADDRESS_HTML);
+    const { fields } = extractFields(document);
+    expect(fields.f1?.label).toBe('');
+  });
+
+  it('レイアウト用の class しかなければ hints は付けない', () => {
+    setBody('<form><div class="form-group row col-sm-9"><input type="text" class="form-control" name="x"></div></form>');
+    const { fields } = extractFields(document);
+    expect(fields.f0?.hints).toBeUndefined();
+  });
+});
+
+describe('extractFields: select の案内用 option', () => {
+  function stateOf(optionsHtml: string) {
+    setBody(`<form><select name="pref">${optionsHtml}</select></form>`);
+    return extractFields(document).fields.f0?.currentValue;
+  }
+
+  it('「選択してください」「---」が selected 属性付きで先頭にあっても未入力', () => {
+    expect(stateOf('<option value="0" selected>選択してください</option><option value="1">東京都</option>')).toBe('empty');
+    expect(stateOf('<option value="x" selected>---</option><option value="1">東京都</option>')).toBe('empty');
+    expect(stateOf('<option value="x" selected>Please select</option><option value="1">Tokyo</option>')).toBe('empty');
+  });
+
+  it('実在の選択肢が選ばれていれば入力済み', () => {
+    expect(stateOf('<option value="">選択してください</option><option value="1" selected>東京都</option>')).toBe('filled');
+  });
+});

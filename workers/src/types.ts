@@ -24,6 +24,8 @@ export interface JevField {
   required?: boolean;
   maxlength?: number;
   section?: string;
+  /** 入力欄を包む要素の class 名（例: `zip`）。英字始まりの ASCII 識別子のみ通す */
+  hints?: string[];
   options?: string[];
   currentValue?: 'empty' | 'filled';
 }

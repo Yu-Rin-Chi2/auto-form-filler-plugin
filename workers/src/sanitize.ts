@@ -11,6 +11,9 @@ const MAX_TEXT = 300;
 const MAX_OPTIONS = 20;
 const MAX_CUSTOM_FIELDS = 50;
 const CUSTOM_ID_PATTERN = /^custom_[A-Za-z0-9]{1,16}$/;
+const MAX_HINTS = 4;
+/** class 名として普通の形だけ通す。日本語・数字始まり・記号入り（氏名・電話・メール等になりうる）は落とす */
+const HINT_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{1,39}$/;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -28,6 +31,9 @@ function sanitizeField(raw: unknown): JevField | null {
   const options = Array.isArray(raw.options)
     ? raw.options.filter((o): o is string => typeof o === 'string').slice(0, MAX_OPTIONS).map((o) => o.slice(0, MAX_TEXT))
     : undefined;
+  const hints = Array.isArray(raw.hints)
+    ? raw.hints.filter((h): h is string => typeof h === 'string' && HINT_PATTERN.test(h)).slice(0, MAX_HINTS)
+    : [];
 
   return {
     tag,
@@ -40,6 +46,7 @@ function sanitizeField(raw: unknown): JevField | null {
     required: typeof raw.required === 'boolean' ? raw.required : undefined,
     maxlength: typeof raw.maxlength === 'number' && Number.isFinite(raw.maxlength) ? raw.maxlength : undefined,
     section: text(raw.section),
+    hints: hints.length > 0 ? hints : undefined,
     options,
     // 値そのものではなく「空か埋まっているか」だけを受け付ける
     currentValue: raw.currentValue === 'empty' || raw.currentValue === 'filled' ? raw.currentValue : undefined,

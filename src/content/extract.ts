@@ -131,6 +131,10 @@ function readSelectOptions(select: HTMLSelectElement): string[] {
     .filter((s): s is string => Boolean(s));
 }
 
+/** 「選択してください」「---」など、未選択を表す案内用の option の表示 */
+const PLACEHOLDER_OPTION_PATTERN =
+  /^[\s\-－‐―—─ー=＝*＊・.。…]*$|選択して(ください|下さい)|お?選び(ください|下さい)|^[(（【［[]?\s*選択\s*[)）】］\]]?$|please\s+(select|choose)|^(select|choose)\b/i;
+
 function readCurrentValueState(
   el: HTMLElement,
   tag: 'input' | 'select' | 'textarea',
@@ -142,10 +146,13 @@ function readCurrentValueState(
   if (tag === 'select') {
     const select = el as HTMLSelectElement;
     if (!select.value) return 'empty';
+    const selectedOption = select.options[select.selectedIndex];
+    // value があっても、表示が空・案内文の option は未選択とみなす
+    // （例: Pardot の都道府県欄は `<option value="2125539" selected="selected"></option>` が先頭にある）
+    if (!selectedOption || PLACEHOLDER_OPTION_PATTERN.test(selectedOption.textContent?.trim() ?? '')) return 'empty';
     // ブラウザは <option selected> がなければ先頭の option を自動選択する。
     // 先頭 option が自動選択されているだけ（HTML 上 selected 属性がない）の場合は
     // 「ユーザーが選んだ値」とは区別できないため、未入力（empty）として扱う。
-    const selectedOption = select.options[select.selectedIndex];
     const firstOption = select.options[0];
     const isDefaultedToFirstOption = selectedOption === firstOption && !firstOption?.hasAttribute('selected');
     return isDefaultedToFirstOption ? 'empty' : 'filled';
@@ -183,6 +190,46 @@ function findSection(el: HTMLElement): string | undefined {
       }
       sibling = sibling.previousElementSibling;
     }
+    node = node.parentElement;
+  }
+  return undefined;
+}
+
+/** 要素自身と、さかのぼる祖先の数 */
+const MAX_HINT_DEPTH = 3;
+const MAX_HINTS = 4;
+/** Worker 側（`workers/src/sanitize.ts`）と同じ形式。英字始まりの ASCII 識別子のみ */
+const HINT_TOKEN_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{1,39}$/;
+/** レイアウト・状態・フレームワーク由来で、項目の意味を表さない class の構成語 */
+const STRUCTURAL_CLASS_WORDS = new Set([
+  'form', 'input', 'field', 'fields', 'control', 'text', 'textarea', 'select', 'label', 'col', 'row',
+  'group', 'item', 'box', 'wrap', 'wrapper', 'inner', 'outer', 'container', 'block', 'inline', 'flex',
+  'grid', 'required', 'optional', 'error', 'valid', 'invalid', 'active', 'focus', 'disabled', 'clearfix',
+  'js', 'is', 'has', 'pd', 'sm', 'md', 'lg', 'xl', 'xs', 'full', 'half', 'width', 'large', 'small',
+]);
+
+function isStructuralClass(token: string): boolean {
+  if (/\d/.test(token)) return true;
+  const words = token
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[\s_-]+/)
+    .filter(Boolean);
+  return words.every((w) => STRUCTURAL_CLASS_WORDS.has(w));
+}
+
+/**
+ * 項目の意味を表していそうな class 名（例: `zip` / `state` / `address_one`）を集める。
+ * ラベルが入力欄から切り離されたフォーム（Pardot など）で、Jev に渡す手がかりにする。
+ * 要素自身から祖先へさかのぼり、意味のある class が見つかった最初の要素のものだけを使う
+ * （さらに上の祖先は隣の項目もまとめて包んでいることが多く、手がかりが混ざるため）。
+ */
+function findHints(el: HTMLElement): string[] | undefined {
+  let node: HTMLElement | null = el;
+  for (let depth = 0; node && depth <= MAX_HINT_DEPTH; depth++) {
+    if (depth > 0 && node.tagName === 'FORM') break;
+    const tokens = Array.from(node.classList).filter((c) => HINT_TOKEN_PATTERN.test(c) && !isStructuralClass(c));
+    if (tokens.length > 0) return Array.from(new Set(tokens)).slice(0, MAX_HINTS);
     node = node.parentElement;
   }
   return undefined;
@@ -288,6 +335,7 @@ export function extractFields(doc: Document = document): ExtractionResult {
       required: el.hasAttribute('required') || undefined,
       maxlength: readMaxLength(el),
       section: findSection(el),
+      hints: findHints(el),
       options:
         tag === 'select'
           ? readSelectOptions(el as HTMLSelectElement)

@@ -82,6 +82,16 @@ function fromPreviousSiblingText(el: HTMLElement): string {
   return '';
 }
 
+/**
+ * name 属性は最後の手段。自動採番された ID（例: Pardot の `893021_217038pi_893021_217038`）は
+ * 項目の意味を持たず、ラベルとして見せるとかえって Jev を惑わせるので使わない。
+ * 英字 3 文字以上の並び（`tel` / `zip` / `last_name` 等）か、非 ASCII 文字を含むものだけ採用する。
+ */
+function fromMeaningfulName(el: HTMLElement): string {
+  const name = el.getAttribute('name')?.trim() ?? '';
+  return /[A-Za-z]{3,}|[^\x00-\x7f]/.test(name) ? name : '';
+}
+
 export function resolveLabel(el: HTMLElement): string {
   const strategies = [
     () => fromAriaLabelledby(el),
@@ -92,7 +102,7 @@ export function resolveLabel(el: HTMLElement): string {
     () => fromPreviousSiblingText(el),
     () => (el as HTMLInputElement).placeholder?.trim() ?? '',
     () => el.getAttribute('title')?.trim() ?? '',
-    () => el.getAttribute('name')?.trim() ?? '',
+    () => fromMeaningfulName(el),
   ];
   for (const strategy of strategies) {
     const value = strategy();
