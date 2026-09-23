@@ -18,10 +18,10 @@
 | F-07 | 結果表示 | 入力したフィールドのハイライト、ポップアップに件数サマリ（入力／スキップ／対応なし） |
 | F-08 | ポップアップからの実行 | プロフィール選択 → 「このページに入力」 |
 | F-09 | キーボードショートカット | 既定 `Alt+Shift+F`。前回使ったプロフィールで即実行 |
-| F-10 | Jev プロバイダ設定 | OpenRouter / TypeSafe 直接の切替、API キー入力、接続テスト |
+| F-10 | ~~Jev プロバイダ設定~~ | 廃止（2026-09-23）。プロキシ Worker 方式への移行により、利用者による API キー設定は不要になった |
 | F-11 | インポート／エクスポート | 全プロフィールを JSON ファイルで書き出し・読み込み |
 | F-12 | i18n | 日本語・英語（`chrome.i18n`、既定 ja） |
-| F-13 | オンボーディング | 初回インストール時にオプションページを開き、キー設定とプロフィール作成を案内 |
+| F-13 | オンボーディング | 初回インストール時にオプションページの「プロフィール」タブを開き、プロフィール作成を案内 |
 
 ### Should（MVP 直後）
 
@@ -39,7 +39,7 @@
 | F-30 | フリガナ自動生成 | 漢字氏名からカナを推定（辞書ベース、ローカル） |
 | F-31 | 右クリックメニューからの実行 | コンテキストメニューに「このフォームに入力」 |
 | F-32 | 対応付けの手動修正 | 結果画面でフィールドの項目を変え、サイト記憶（F-21）に反映 |
-| F-33 | Cloudflare Workers AI プロバイダ | 第 3 のプロバイダ |
+| F-33 | ~~Cloudflare Workers AI プロバイダ~~ | 実現済み（2026-09-23）。BYOK の第 3 候補としてではなく、唯一の経路として採用した |
 | F-34 | 追加項目 | 役職、Web サイト URL、会社住所、FAX など |
 
 ### Won't（MVP では実装しない）
@@ -152,9 +152,7 @@ Jev に提示する項目名は 2.3 + 2.4 の和集合 + `none`（PoC の `profi
 
 ```ts
 interface Settings {
-  provider: 'openrouter' | 'typesafe';
-  apiKey: string;                 // ユーザー自身のキー。local のみ
-  model?: string;                 // 既定: openrouter → 'typesafe/jev-1.13', typesafe → 'jev-latest'
+  workerEndpoint?: string;        // プロキシ Worker の向き先。UI なし。未設定なら既定の Worker
   lastProfileId: string | null;   // ショートカット実行に使う
   confidenceThreshold: number;    // 既定 0.7
   highlightFilled: boolean;       // 既定 true
@@ -184,9 +182,8 @@ interface FillResult {
 
 | 画面 | 種別 | 主な要素 |
 |---|---|---|
-| ポップアップ | `action.default_popup` | プロフィール選択、「このページに入力」ボタン、直近結果サマリ、設定リンク。キー未設定／プロフィール未作成時は案内 |
+| ポップアップ | `action.default_popup` | プロフィール選択、「このページに入力」ボタン、直近結果サマリ、設定リンク。プロフィール未作成時は案内 |
 | オプション: プロフィール | `options_page`（タブ） | プロフィール一覧、追加・複製・削除、編集フォーム、インポート／エクスポート |
-| オプション: API 設定 | 同上 | プロバイダ選択、キー入力（マスク表示）、接続テスト、キー取得手順のリンク |
 | オプション: 動作設定 | 同上 | 確信度閾値、ハイライト、プレビュー、ショートカット変更への導線（`chrome://extensions/shortcuts`） |
 | オプション: プライバシー | 同上 | 何を送り何を送らないかの説明、プライバシーポリシーへのリンク |
 | ページ内オーバーレイ | content script | 入力済みフィールドのハイライト（枠線）、完了トースト（件数） |
@@ -203,7 +200,7 @@ sequenceDiagram
     participant P as ポップアップ / ショートカット
     participant SW as Service Worker
     participant CS as content script（実行時注入）
-    participant J as Jev API（ユーザーのキー）
+    participant J as プロキシ Worker → Jev
 
     U->>P: プロフィール選択 → 「入力」
     P->>SW: FILL_REQUEST { tabId, profileId }
@@ -212,7 +209,7 @@ sequenceDiagram
     CS->>CS: フィールド列挙・除外・メタデータ化（5.1）
     CS-->>SW: { fields: { f0: {...}, f1: {...} }, page: {...} }
     SW->>SW: リクエスト組み立て（5.2）※値は含めない
-    SW->>J: POST /v1/systemone
+    SW->>J: POST /v1/infer
     J-->>SW: answers { f0: { choice, confidence, ... }, ... }
     SW->>SW: 値の解決（5.3）閾値判定・分割・選択肢マッチ
     SW->>CS: APPLY_FILL { f0: "山田", f2: { select: "東京都" }, ... }
@@ -225,10 +222,11 @@ sequenceDiagram
 
 ### 4.2 初回セットアップ
 
-1. インストール → `chrome.runtime.onInstalled` でオプションページを開く
-2. 「API 設定」タブ: プロバイダ選択 → キー取得手順（OpenRouter: openrouter.ai/keys、TypeSafe: console.typesafe.ai）→ キー入力 → 接続テスト（最小の Noul 1 問）
-3. 「プロフィール」タブ: 最初のプロフィールを作成
-4. ポップアップが使用可能状態になる
+1. インストール → `chrome.runtime.onInstalled` でオプションページの「プロフィール」タブを開く
+2. 最初のプロフィールを作成
+3. ポップアップが使用可能状態になる
+
+API キーの取得・設定は不要（2026-09-23 の方針変更。旧 BYOK 方式では手順 2 がキー設定だった）。
 
 ### 4.3 ショートカット実行
 
@@ -285,13 +283,28 @@ interface ExtractedField {
 
 **5.1.4 上限**: 60 フィールドを超える場合は先頭 60 件（Jev のトークン上限 32k に対して余裕を持たせる）。超過分はスキップとして件数報告。
 
-### 5.2 Jev リクエスト（Service Worker）
+### 5.2 判定リクエスト
 
-PoC の `keyed` バリアントに準拠。
+**拡張が送るのはフォーム項目の「見た目」の情報だけ**で、Jev への指示文・選択肢・モデルは
+すべてプロキシ Worker が組み立てる（`workers/src/build-request.ts`）。
+呼び出し側に判定内容を決めさせないことで、フォーム入力以外の用途に転用できないようにしている。
+
+送信先は `POST <Worker>/v1/infer`（認証ヘッダなし）。
+
+```jsonc
+// 拡張 → Worker。プロフィールの値を入れる場所が存在しない（P1）
+{
+  "page": { "url": "<origin+path>", "title": "...", "lang": "ja" },
+  "fields": { "f0": { "tag": "input", "type": "text", "name": "sei", "label": "姓" } },  // 最大 60 件
+  "customFields": [ { "id": "custom_ab12cd34", "label": "Twitter ID", "description": "..." } ]
+}
+```
+
+Worker は受信したキーをホワイトリストで絞り込んだうえで（`workers/src/sanitize.ts`）、
+PoC の `keyed` バリアントに準拠した次の形を組み立てて Jev に渡す。
 
 ```jsonc
 {
-  "model": "typesafe/jev-1.13",
   "state": {
     "page": { "url": "<origin+path>", "title": "...", "lang": "ja" },
     "fields": { "f0": { "tag": "input", "type": "text", "name": "sei", "label": "姓", ... }, "f1": {...} },
@@ -306,10 +319,12 @@ PoC の `keyed` バリアントに準拠。
 }
 ```
 
-- `state.profile` は項目名と説明のみ。**値は含めない**（P1）
+- `state.profile` は項目名と説明のみ。**値は含めない**（P1）。そもそも拡張 → Worker のスキーマに値の置き場がない
+- レスポンス検証と「不正なら 1 回だけ再送」は Worker 側の責務（`workers/src/infer.ts`）。
+  拡張から見えるのは再送し尽くした結果の 502 `invalid_response` のみ
 - `page.url` はクエリ文字列・フラグメントを除く
 - ガードレール Noul（`is_payment` 等）は、カード欄を観測段階で除外する方針にしたため MVP では送らない
-- タイムアウト 10 秒、429/529 は `Retry-After` を尊重して最大 2 回リトライ
+- タイムアウト 10 秒、429/529 は `Retry-After` を尊重して最大 2 回リトライ（Worker のレート制限超過も 429 で返る）
 - レスポンスは `choice` が criteria に含まれるか、`probabilities` の合計が 1±0.02 か、`choice` が最大確率か、を検証。不正なら 1 回だけ再送、再度不正ならエラー
 
 ### 5.3 値の解決（Service Worker）
@@ -353,9 +368,8 @@ PoC の `keyed` バリアントに準拠。
 
 | 状況 | 挙動 |
 |---|---|
-| API キー未設定 | ポップアップで案内。実行しない |
-| 401 | 「キーが無効です」＋ API 設定への導線 |
-| 429 / 529 | リトライ後も失敗なら「混雑しています。少し待って再試行してください」 |
+| 429 / 529 | リトライ後も失敗なら「混雑しています。少し待って再試行してください」。Worker のレート制限超過もここに含まれる |
+| 502（Worker から見て Jev 側の失敗） | 「予期しないエラーが発生しました」 |
 | ネットワーク不通・タイムアウト | 「Jev に接続できません」。TypeSafe の status ページへのリンク |
 | フィールド 0 件 | 「入力できるフォームが見つかりません」 |
 | `chrome://` 等の注入不可ページ | 「このページでは使えません」 |
@@ -370,7 +384,7 @@ PoC の `keyed` バリアントに準拠。
   "manifest_version": 3,
   "default_locale": "ja",
   "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["https://api.typesafe.ai/*", "https://openrouter.ai/*"],
+  "host_permissions": ["https://formfill.yrctool.stream/*"],
   // 既定は無効。クロスオリジン iframe 内のフォーム向けに、ユーザーが許可したオリジンのみ実行時に有効化
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "action": { "default_popup": "popup.html" },

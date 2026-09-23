@@ -60,7 +60,7 @@ docs/              requirements/, research/, test-scenarios/
 
 ### Jev への実通信について
 
-`poc/` 配下の PoC スクリプトは実際に Jev API（TypeSafe / OpenRouter）へ通信します。本体（`src/`）のテスト（`npm run test` / `npm run e2e`）は実 API に一切通信しません（`npm run e2e` はローカルのモック HTTP サーバーを使います）。
+`poc/` 配下の PoC スクリプトは実際に Jev へ通信します（`JEV_PROVIDER=worker WORKER_ENDPOINT=... npm run poc` でデプロイ済みの中継サーバー経由でも実行できます）。本体（`src/`）のテスト（`npm run test` / `npm run e2e`）は実 API に一切通信しません（`npm run e2e` はローカルのモック HTTP サーバーを使います）。
 
 ## Pull Request を送る前に
 

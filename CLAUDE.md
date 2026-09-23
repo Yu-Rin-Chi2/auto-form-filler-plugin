@@ -25,11 +25,13 @@ Jev（TypeSafe AI の判定特化モデル）でフォームの項目を判定�
 - UI: React 19（popup / options のみ。content script は素の DOM 操作）
 - テスト: vitest（純粋関数）+ jsdom（DOM 抽出・注入）、Playwright（`--load-extension` で E2E、Jev はモック）
 - i18n: UI 文言は `src/shared/i18n.ts` の実行時辞書（`Settings.locale` で日英切替。`chrome.i18n` はブラウザ言語固定で切替できないため不採用）。`public/_locales/{ja,en}/messages.json` は manifest の名前・説明・コマンド説明のみ。既定 `ja`
-- Jev 呼び出し: 素の `fetch`（SDK 不使用）。形式は `poc/jev-client.ts` と `docs/requirements/01-functional-requirements.md` 5.2 に準拠
+- Jev 呼び出し: 拡張は開発者が運用する Cloudflare Worker（`workers/`）に素の `fetch` で `POST /v1/infer` するだけ。API キーは持たない。**Jev への指示文・選択肢・モデル・レスポンス検証はすべて Worker 側の責務**で、拡張が送るのはフォーム項目のメタデータのみ。形式は `docs/requirements/01-functional-requirements.md` 5.2 に準拠
+- Workers: `workers/` は独立した npm パッケージ。デプロイは `cd workers && npm run deploy`（wrangler CLI。Cloudflare MCP は OAuth が通らないため使わない）
 
 ## ディレクトリ構成
 
 ```
+workers/           Cloudflare Workers の Jev プロキシ（独立パッケージ。wrangler でデプロイ）
 public/            manifest.json, _locales/, icons/（そのまま dist/ へ）
 src/
   shared/          型、メッセージ定義、プロフィールスキーマと派生項目、storage ラッパー、i18n ヘルパー
@@ -51,6 +53,9 @@ docs/              requirements/, research/, test-scenarios/
 ## 絶対に守ること
 
 - プロフィールの値（氏名・住所・電話等）は `chrome.storage.local` のみ。Jev を含め外部に送らない。`chrome.storage.sync` 不使用
+- Worker はリクエスト本文をログに出力しない（全利用者のリクエストが開発者のアカウントを通るため、これが利用者への約束になっている）
+- 拡張 → Worker のスキーマに個人情報の値を入れる場所を作らない。`CustomField.value` を素通ししないこと（`toCustomFieldPayload` で id/label/description のみに詰め替える）。Worker 側も `sanitize.ts` のホワイトリストで二重に落とす
+- Worker が Jev への指示文・選択肢を組み立てる設計を崩さない。呼び出し側に指定させるとフォーム入力以外の用途に転用できてしまう（エンドポイントは認証なしの公開 API）
 - フォームを送信しない
 - カード情報・パスワードは扱わない（観測段階で除外）
 - `.env` はコミットしない。Claude は `.env` を読み書きしない（`--env-file` 経由で実行のみ）

@@ -10,9 +10,8 @@
 | データ | 保存場所 | 外部送信 |
 |---|---|---|
 | プロフィールの値（氏名・住所・電話・メール等） | `chrome.storage.local` | **しない**。Jev にも送らない |
-| API キー | `chrome.storage.local` | Jev API への `Authorization` ヘッダのみ |
-| フィールドのメタデータ（label / name / autocomplete / placeholder / type / section / 選択肢の一部） | 送信時のみメモリ | Jev API へ送信 |
-| ページ URL（オリジン + パス）、タイトル | 送信時のみメモリ | Jev API へ送信 |
+| フィールドのメタデータ（label / name / autocomplete / placeholder / type / section / 選択肢の一部） | 送信時のみメモリ | プロキシ Worker 経由で Jev へ送信 |
+| ページ URL（オリジン + パス）、タイトル | 送信時のみメモリ | プロキシ Worker 経由で Jev へ送信 |
 | ページ内でユーザーが既に入力した値 | 読まない | しない（「空か埋まっているか」のフラグのみ） |
 | 直近の実行結果（件数） | `chrome.storage.local` | しない |
 
@@ -36,7 +35,7 @@
 | `activeTab` | ユーザー操作起点で現在のタブにアクセス | ページ内バナー方式を採らないため `<all_urls>` 不要 |
 | `scripting` | content script の実行時注入 | 常駐させない |
 | `storage` | プロフィール・設定の保存 | |
-| `host_permissions: api.typesafe.ai, openrouter.ai` | Jev API 呼び出し | CORS 回避のため必要 |
+| `host_permissions: formfill.yrctool.stream` | プロキシ Worker の呼び出し | CORS 回避のため必要。Jev の各社ホストへは拡張から直接つながない |
 | `optional_host_permissions: https://*/*, http://*/*` | クロスオリジン iframe 内のフォーム（Stripe Connect のホスト型オンボーディング等）への注入 | 既定は無効。入力欄 0 件かつ可視な別オリジン iframe があるときだけポップアップで「許可して再実行」を提示し、ユーザー操作起点で `permissions.request` をそのオリジン 1 件に対して呼ぶ。許可一覧と取り消しは設定「プライバシー」（2026-09-22 追加） |
 
 - `tabs`, `webNavigation`, `cookies`, `<all_urls>`（固定権限として）は使わない
@@ -45,11 +44,43 @@
 - Single purpose: 「フォームへの自動入力」に限定。無関係な機能を入れない
 - リモートコードの実行禁止（MV3 要件）。すべてバンドルに同梱
 
-### 1.4 API キーの扱い
+### 1.4 API キーとプロキシ Worker の扱い
 
-- 設定画面ではマスク表示（末尾 4 文字のみ表示）
-- エクスポート JSON に含めない
-- ログ・エラーメッセージ・バグレポートに含めない（エラー本文からキー文字列をマスクする）
+API キーは拡張にもリポジトリにも存在しない。判定はすべて開発者が運用する Cloudflare Worker
+（`workers/`、`https://formfill.yrctool.stream`）を経由し、
+Worker は Workers AI バインディングで `typesafe/jev` を呼ぶ。バインディングが認証を担うため、
+Worker 自身も API キーを保持しない。
+
+この構成により、利用者の端末に API キーが保存されることはなくなった一方で、
+**全利用者のリクエストが開発者の Cloudflare アカウントを通る**。そのため以下を守る。
+
+- Worker はリクエスト本文をログに出力しない。記録するのは
+  Workers AI 呼び出しが失敗したときのエラーメッセージのみ
+- レート制限のため `CF-Connecting-IP` を参照するが、保存しない
+- **拡張 → Worker のスキーマに個人情報の値を入れる場所がない**（P1 の第 1 層）。
+  `CustomField` は値を持つが、送信用の `CustomFieldPayload` は id / label / description のみで、
+  型の上で値を渡せない（`src/background/jev/client.ts` の `toCustomFieldPayload`）
+- **Worker 側でも通すキーをホワイトリストで絞る**（P1 の第 2 層、`workers/src/sanitize.ts`）。
+  拡張に不具合が入って余計なプロパティが混ざっても、Jev には届かない
+- 旧バージョン（BYOK 方式）で `chrome.storage.local` に保存された API キーは、
+  設定の読み込み時に削除する（`src/shared/storage.ts`）
+
+#### 乱用防止
+
+Worker は `ratelimit` バインディングで 1 IP あたり毎分 20 リクエストに制限する。
+ただしこの仕組みには次の限界があり、**支出の上限にはならない**。
+
+- `period` は 10 秒か 60 秒しか指定できず、日次・月次のクォータは表現できない
+- Cloudflare の拠点ごとに独立してカウントされる eventually consistent な仕組みのため、
+  分散したアクセスには実効上限が緩くなる
+
+したがって最終的な歯止めは、AI Gateway のプリペイド残高そのものと Cloudflare ダッシュボードの支出アラートに置く。
+**自動チャージ（auto top-up）は有効にしない**（有効にすると実質的な上限が外れる）。
+コストが問題化した場合は、匿名インストール ID + KV による日次クォータを追加する。
+
+なお `typesafe/jev` は Workers AI の third-party モデルであり、AI Gateway のプリペイドクレジットが必須。
+残高切れは `AiGatewayError: 2021` となり、Worker からは 502 で返る。
+
 - 拡張の CSP は既定（`script-src 'self'`）。`unsafe-eval` 不使用
 
 ### 1.5 Web ページからの隔離
@@ -61,7 +92,7 @@
 ### 1.6 プライバシーポリシー
 
 - 公開場所: GitHub リポジトリ `PRIVACY.md` および GitHub Pages
-- 記載内容: 収集しない情報、Jev に送る情報の一覧、API キーの扱い、第三者（TypeSafe / OpenRouter）への送信、ローカル保存の範囲、連絡先
+- 記載内容: 収集しない情報、Jev に送る情報の一覧、中継サーバーの扱い（内容を記録しない・IP は回数制限にのみ使う）、第三者（Cloudflare / TypeSafe）への送信、ローカル保存の範囲、連絡先
 - Web Store のデータ使用開示（Privacy practices）と整合させる
 
 ## 2. パフォーマンス
@@ -83,7 +114,9 @@
 - 429 / 529: `Retry-After` を尊重して最大 2 回リトライ。以降はユーザーに待機を促す
 - タイムアウト: 10 秒
 - early access のため API 仕様変更の可能性がある。レスポンス検証（5.2）で不正を検知し、黙って誤入力しない
-- モデル ID の変更に備え、設定でモデル名を上書き可能にする
+- モデル ID は Worker 側（`workers/src/index.ts`）に持つ。変更時は Worker を再デプロイするだけでよく、
+  拡張の更新もストア審査も待たずに切り替えられる。なお Workers AI の `typesafe/jev` は
+  バージョン指定ができないため、Cloudflare 側の更新は自動で反映される
 
 ### 3.2 誤入力の防止
 
@@ -116,7 +149,7 @@
 
 - TypeScript `strict`。`chrome` 型は `@types/chrome`
 - 3 層を明確に分離: content script（DOM 抽出・注入）／Service Worker（Jev 呼び出し・値の解決）／UI（popup / options）。共有型は `src/shared/`
-- Jev クライアントはプロバイダ差分（URL・モデル ID・ヘッダ）だけを抽象化し、リクエスト／レスポンスの形は共通
+- Jev クライアント（`src/background/jev/client.ts`）は接続先 URL の解決だけを外に出し（`src/shared/config.ts`）、モデル選択と認証は Worker 側に寄せる
 - 値の解決ロジック（分割・正規化・かな変換）は純粋関数にし、DOM や storage に依存させない
 
 ### 5.2 テスト
@@ -139,7 +172,7 @@
 
 - ライセンス: MIT を想定（要確認）
 - リポジトリに含めない: `.env*`、`poc/results/`、`node_modules/`、ストア用の秘密情報
-- README: 概要、インストール（Web Store / unpacked）、キー取得手順、プライバシー、開発手順
+- README: 概要、インストール（Web Store / unpacked）、判定の仕組みと費用、プライバシー、開発手順
 - `PRIVACY.md`: 1.6 の内容
 - `CONTRIBUTING.md`: 「値を外部に送る変更は受け付けない」を明記
 - Issue テンプレート: バグ報告にはリクエスト JSON（値を含まない）を添付してもらう

@@ -346,7 +346,13 @@ result.answers.f1.choice; // 型推論される
 - `is_payment` / `is_login` のような Noul ガードレールを同送し、閾値超えなら自動入力を止めてユーザー確認
 - パスワード欄・カード番号欄は観測段階で除外（jev-for-chrome / PRIVACY.md と同方針）
 
-### 7.3 BYOK 実装方針
+### 7.3 BYOK 実装方針（2026-09-23 に破棄）
+
+> **この節は経緯として残している。** 2026-09-23 に BYOK を全面廃止し、開発者が運用する
+> Cloudflare Workers のプロキシ経由（Workers AI バインディングで `typesafe/jev` を呼ぶ）に移行した。
+> キー取得の手間が利用開始の最大の障壁だったため。現行仕様は
+> [02-nonfunctional-requirements.md](../requirements/02-nonfunctional-requirements.md) 1.4 を参照。
+> なお Workers AI の `typesafe/jev` は third-party モデル扱いで、AI Gateway のプリペイドクレジットが必要。
 
 - 対応プロバイダ: TypeSafe 直接 + OpenRouter（必須）、Cloudflare Workers AI（任意）
 - キー保存: `chrome.storage.local`（デバイス内のみ）。設定画面で「あなたのキーはこの端末の拡張内にのみ保存され、Jev API 呼び出しにだけ使われます」と明示
