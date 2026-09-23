@@ -33,10 +33,12 @@ import {
   matchYear,
   shouldStripHyphens,
 } from './normalize';
+import { buildAddressValue, planAddressRanges } from './address';
 
 export interface AnswerLike {
   choice: string;
   confidence: number;
+  probabilities?: Record<string, number>;
 }
 
 export interface ResolveSettings {
@@ -82,6 +84,7 @@ interface Decision {
   field: ExtractedField;
   choice?: ProfileFieldKey;
   confidence?: number;
+  probabilities?: Record<string, number>;
   /** この時点でスキップが確定している理由（未確定なら undefined） */
   gatedReason?: FieldOutcomeReason;
 }
@@ -169,10 +172,11 @@ function buildDecision(
   if (choice === 'none') {
     return { id, field, choice, confidence: answer.confidence, gatedReason: 'no_match' };
   }
+  const base = { id, field, choice, confidence: answer.confidence, probabilities: answer.probabilities };
   if (answer.confidence < threshold) {
-    return { id, field, choice, confidence: answer.confidence, gatedReason: 'skipped_low_confidence' };
+    return { ...base, gatedReason: 'skipped_low_confidence' };
   }
-  return { id, field, choice, confidence: answer.confidence };
+  return base;
 }
 
 /** ゲートを通過したフィールドのうち、DOM 順で連続し choice が同じ分割対象キーであるものをグループ化 */
@@ -220,6 +224,24 @@ export function resolveFill(input: ResolveInput): ResolveOutput {
     return buildDecision(id, field, answers[id], settings.confidenceThreshold);
   });
 
+  // 住所の分割の度合いに合わせて各欄の受け持ち範囲を決める（手順 4a）。
+  // 範囲が決まった欄は「住所のどこか」である確率の合計で確信度を判定する
+  // （full / line1 / line2 で Jev が迷っても、範囲は前後の欄から決まるため）
+  const addressPlans = planAddressRanges(
+    decisions.map((d) => ({
+      id: d.id,
+      field: d.field,
+      choice: d.gatedReason && d.gatedReason !== 'skipped_low_confidence' ? undefined : d.choice,
+      probabilities: d.probabilities,
+    })),
+  );
+  for (const d of decisions) {
+    const plan = addressPlans.get(d.id);
+    if (d.gatedReason === 'skipped_low_confidence' && (plan?.addressConfidence ?? 0) >= settings.confidenceThreshold) {
+      d.gatedReason = undefined;
+    }
+  }
+
   const splitGroups = buildSplitGroups(decisions);
 
   const assignments: Record<string, FillAssignment> = {};
@@ -232,6 +254,7 @@ export function resolveFill(input: ResolveInput): ResolveOutput {
     }
     const choiceKey = d.choice as ProfileFieldKey;
     const group = splitGroups.get(d.id);
+    const addressPlan = addressPlans.get(d.id);
 
     let rawValue: string;
     if (group) {
@@ -248,6 +271,12 @@ export function resolveFill(input: ResolveInput): ResolveOutput {
         }
       } else {
         rawValue = parts[idx] ?? '';
+      }
+    } else if (addressPlan && !isSelectOrRadio(d.field)) {
+      rawValue = buildAddressValue(profileFields, addressPlan.script, addressPlan.from, addressPlan.to);
+      // 広げた値が収まらなければ、その欄自身の部分だけにする
+      if (d.field.maxlength !== undefined && rawValue.length > d.field.maxlength) {
+        rawValue = buildAddressValue(profileFields, addressPlan.script, addressPlan.own, addressPlan.own);
       }
     } else {
       rawValue = resolveProfileFieldValue(choiceKey, profileFields, { placeholder: d.field.placeholder, now, customValues });
