@@ -8,8 +8,7 @@ import {
   parseBirthDate,
   resolveProfileFieldValue,
   snsProfileUrl,
-  splitByHyphen,
-  splitPhoneForFieldCount,
+  splitForFieldCount,
   wantsUrl,
 } from '../../shared/derive';
 import { isCustomFieldKey } from '../../shared/types';
@@ -259,8 +258,11 @@ export function resolveFill(input: ResolveInput): ResolveOutput {
     let rawValue: string;
     if (group) {
       const wholeValue = resolveProfileFieldValue(choiceKey, profileFields, { now, customValues });
-      const parts =
-        choiceKey === 'phone' ? splitPhoneForFieldCount(wholeValue, group.length) : splitByHyphen(wholeValue);
+      const parts = splitForFieldCount(
+        choiceKey as 'phone' | 'postal_code',
+        wholeValue,
+        group.map((g) => g.field.maxlength),
+      );
       const idx = group.indexOf(d);
       if (parts.length !== group.length) {
         if (idx === 0) {

@@ -231,26 +231,78 @@ export function calculateAge(birthDate: string, at: Date = new Date()): number |
   return age;
 }
 
+/** 全角数字を半角に、各種ダッシュ・長音記号を「-」に揃える（`０９０ー１２３４` のような保存値のため） */
+function normalizeDigitsAndDashes(value: string): string {
+  return value.replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)).replace(/[‐‑–—―ー−－]/g, '-');
+}
+
 /** 電話番号・郵便番号のハイフン分割。空パーツは除去する */
 export function splitByHyphen(value: string): string[] {
-  return value
+  return normalizeDigitsAndDashes(value)
     .split('-')
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
 }
 
+function sliceByLengths(digits: string, lengths: number[]): string[] {
+  const parts: string[] = [];
+  let pos = 0;
+  for (const len of lengths) {
+    parts.push(digits.slice(pos, pos + len));
+    pos += len;
+  }
+  return parts;
+}
+
 /**
- * 電話番号を対象フィールド数に合わせて分割する（要件 2.4）。
- * 3 分割フォームならハイフンで 3 パーツに分割する。2 分割フォームなら、
- * パーツ数に関わらず「先頭パーツ + 残り全部（ハイフンなしで連結）」の 2 パーツにする
- * （例: "090-1234-5678" を 2 フィールドへ → ["090", "12345678"]）。
- * それ以外（フィールド数と分割結果が一致しない等）は、呼び出し側（値解決ロジック）が
+ * ハイフンなしの電話番号を、市外局番・市内局番・加入者番号に分ける。
+ * 桁の区切りが番号から一意に決まるもの（携帯・IP 電話・フリーダイヤル・東京/大阪）だけを扱い、
+ * 市外局番の桁数が地域で変わる固定電話は推測せず null を返す
+ */
+function splitPhoneDigits(digits: string): string[] | null {
+  if (/^0[5789]0\d{8}$/.test(digits)) return sliceByLengths(digits, [3, 4, 4]);
+  if (/^0120\d{6}$/.test(digits)) return sliceByLengths(digits, [4, 3, 3]);
+  if (/^0800\d{7}$/.test(digits)) return sliceByLengths(digits, [4, 3, 4]);
+  if (/^0[36]\d{8}$/.test(digits)) return sliceByLengths(digits, [2, 4, 4]);
+  return null;
+}
+
+/**
+ * 電話番号・郵便番号を、分割された入力欄の数に合わせて分ける（要件 2.4）。
+ *
+ * 1. ハイフン区切りのパーツ数が欄の数と一致すればそのまま使う
+ * 2. 各欄の maxlength の合計が数字の桁数と一致すれば、その長さで区切る
+ * 3. ハイフンなしで保存されていれば、番号の形から区切る（郵便番号 3-4、電話は splitPhoneDigits）
+ * 4. 電話番号の 2 分割フォームは「先頭パーツ + 残り全部」（例: "090-1234-5678" → ["090", "12345678"]）
+ *
+ * どれにも当てはまらなければパーツ数が欄の数と合わない配列を返し、呼び出し側（値解決ロジック）が
  * 「先頭フィールドに値全体を投入し、残りはスキップ」にフォールバックする。
  */
-export function splitPhoneForFieldCount(phone: string, fieldCount: number): string[] {
-  const parts = splitByHyphen(phone);
+export function splitForFieldCount(
+  key: 'phone' | 'postal_code',
+  value: string,
+  maxLengths: (number | undefined)[],
+): string[] {
+  const fieldCount = maxLengths.length;
+  let parts = splitByHyphen(value);
   if (parts.length === fieldCount) return parts;
-  if (fieldCount === 2 && parts.length >= 2) {
+
+  const digits = parts.join('');
+  if (!/^\d+$/.test(digits)) return parts;
+
+  if (maxLengths.every((n): n is number => n !== undefined && n > 0)) {
+    const total = maxLengths.reduce((sum, n) => sum + n, 0);
+    if (total === digits.length) return sliceByLengths(digits, maxLengths);
+  }
+
+  if (parts.length === 1) {
+    const split =
+      key === 'postal_code' ? (/^\d{7}$/.test(digits) ? sliceByLengths(digits, [3, 4]) : null) : splitPhoneDigits(digits);
+    if (split) parts = split;
+    if (parts.length === fieldCount) return parts;
+  }
+
+  if (key === 'phone' && fieldCount === 2 && parts.length >= 2) {
     const [first, ...rest] = parts;
     return [first as string, rest.join('')];
   }

@@ -12,7 +12,7 @@ import type { JevCustomField } from './types';
 export const PROFILE_FIELD_DESCRIPTIONS: Record<string, string> = {
   family_name: 'Family name / surname in kanji（姓・苗字）',
   given_name: 'Given name / first name in kanji（名）',
-  full_name: 'Full name in a single field, family name then given name（氏名・お名前）',
+  full_name: 'Full name in a single field, family name then given name（氏名・お名前・ご担当者名）',
   family_name_kana: 'Family name reading in katakana or hiragana（セイ・姓のフリガナ・ふりがな）',
   given_name_kana: 'Given name reading in katakana or hiragana（メイ・名のフリガナ・ふりがな）',
   full_name_kana: 'Full name reading in a single field（フリガナ・ふりがな）',
@@ -33,7 +33,8 @@ export const PROFILE_FIELD_DESCRIPTIONS: Record<string, string> = {
   address_line2_kana: 'Building name, floor, room number reading in katakana（建物名・部屋番号のカナ・フリガナ）',
   address_kana_full: 'Full address reading in katakana in a single field（住所のカナ・フリガナ 全体）',
   country: 'Country（国）',
-  company: 'Company / organization name（会社名・団体名）',
+  company:
+    'Name of the company / organization the user belongs to or represents, or their trade name（会社名・法人名・貴社名・御社名・団体名・屋号）',
   department: 'Department / division（部署名）',
   website: 'Website / homepage URL（ホームページ・会社サイトの URL）',
   birth_date: 'Date of birth as a single field（生年月日）',

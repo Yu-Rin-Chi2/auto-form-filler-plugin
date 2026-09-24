@@ -45,9 +45,17 @@ export interface BuildRequestResult {
   overLimitCount: number;
 }
 
+/**
+ * 「本人の情報ではない」だけを条件にすると、会社名（法人名・貴社名）を個人情報ではないとみなして
+ * `none` に確率が流れる。利用者は会社の担当者としてフォームを埋めることも多いため、
+ * 所属・代表する会社と、担当者としての本人の氏名は本人の情報に含むと明示する
+ */
 const NONE_RULE =
   "Pick `none` if no entry fits, if the field asks for free-form text, a preference, a date of an event, " +
-  "a consent checkbox, or anything that is not the user's own personal information.";
+  'a consent checkbox, or information about someone other than the user (a referrer, a family member, ' +
+  "an emergency contact, a business partner). The user's own information includes the company or organization " +
+  'they belong to or represent (法人名・貴社名・御社名), and their own name when they fill in the form as the ' +
+  'contact person (ご担当者名).';
 
 function buildNullCriteria(descriptions: Record<string, string>): Record<string, null> {
   return Object.fromEntries(Object.keys(descriptions).map((k) => [k, null]));

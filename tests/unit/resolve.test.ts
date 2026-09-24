@@ -129,6 +129,34 @@ describe('resolveFill: 分割グループ（UNIT-RESOLVE-06〜08 / 15）', () =>
     expect(outcomes[1]?.reason).toBe('skipped_split_mismatch');
   });
 
+  it('ハイフンなしで保存した郵便番号・電話番号も分割欄に入る', () => {
+    const fields: ExtractedFields = {
+      f0: field({ maxlength: 3 }),
+      f1: field({ maxlength: 4 }),
+      f2: field({ maxlength: 4 }),
+      f3: field({ maxlength: 4 }),
+      f4: field({ maxlength: 4 }),
+    };
+    const { assignments, outcomes } = resolveFill({
+      fields,
+      answers: {
+        f0: { choice: 'postal_code', confidence: 0.99 },
+        f1: { choice: 'postal_code', confidence: 0.99 },
+        f2: { choice: 'phone', confidence: 0.99 },
+        f3: { choice: 'phone', confidence: 0.99 },
+        f4: { choice: 'phone', confidence: 0.99 },
+      },
+      profileFields: profile({ postal_code: '1000001', phone: '08012345678' }),
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(outcomes.every((o) => o.reason === 'filled')).toBe(true);
+    expect(assignments.f0).toEqual({ kind: 'text', value: '100' });
+    expect(assignments.f1).toEqual({ kind: 'text', value: '0001' });
+    expect(assignments.f2).toEqual({ kind: 'text', value: '080' });
+    expect(assignments.f3).toEqual({ kind: 'text', value: '1234' });
+    expect(assignments.f4).toEqual({ kind: 'text', value: '5678' });
+  });
+
   it('UNIT-RESOLVE-15: email + email_confirm は分割せず同じ値がそのまま入る', () => {
     const fields: ExtractedFields = { f0: field(), f1: field() };
     const { assignments } = resolveFill({

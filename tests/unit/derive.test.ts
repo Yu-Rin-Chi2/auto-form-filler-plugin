@@ -9,7 +9,7 @@ import {
   deriveFullNameKana,
   deriveFullNameRomaji,
   splitByHyphen,
-  splitPhoneForFieldCount,
+  splitForFieldCount,
 } from '../../src/shared/derive';
 import { createEmptyProfileFields } from '../../src/shared/profile-schema';
 import type { ProfileFields } from '../../src/shared/types';
@@ -93,16 +93,52 @@ describe('derive: age', () => {
   });
 });
 
-describe('derive: 電話・郵便番号のハイフン分割', () => {
+describe('derive: 電話・郵便番号の分割', () => {
+  const none = (n: number) => Array<number | undefined>(n).fill(undefined);
+
   it('UNIT-DERIVE-11: 電話番号 3 分割', () => {
-    expect(splitPhoneForFieldCount('090-1234-5678', 3)).toEqual(['090', '1234', '5678']);
+    expect(splitForFieldCount('phone', '090-1234-5678', none(3))).toEqual(['090', '1234', '5678']);
   });
 
   it('UNIT-DERIVE-12: 電話番号 2 分割は先頭パーツ + 残り全部', () => {
-    expect(splitPhoneForFieldCount('090-1234-5678', 2)).toEqual(['090', '12345678']);
+    expect(splitForFieldCount('phone', '090-1234-5678', none(2))).toEqual(['090', '12345678']);
   });
 
   it('UNIT-DERIVE-13: 郵便番号 2 分割', () => {
     expect(splitByHyphen('100-0001')).toEqual(['100', '0001']);
+    expect(splitForFieldCount('postal_code', '100-0001', none(2))).toEqual(['100', '0001']);
+  });
+
+  it('全角数字・全角ハイフン・長音記号で保存されていても分割できる', () => {
+    expect(splitByHyphen('１００－０００１')).toEqual(['100', '0001']);
+    expect(splitForFieldCount('phone', '090ー1234ー5678', none(3))).toEqual(['090', '1234', '5678']);
+  });
+
+  it('ハイフンなしの郵便番号は 3-4 に分ける', () => {
+    expect(splitForFieldCount('postal_code', '1000001', none(2))).toEqual(['100', '0001']);
+  });
+
+  it('ハイフンなしの携帯・IP 電話は 3-4-4、2 分割なら先頭 + 残り', () => {
+    expect(splitForFieldCount('phone', '09012345678', none(3))).toEqual(['090', '1234', '5678']);
+    expect(splitForFieldCount('phone', '05012345678', none(3))).toEqual(['050', '1234', '5678']);
+    expect(splitForFieldCount('phone', '09012345678', none(2))).toEqual(['090', '12345678']);
+  });
+
+  it('ハイフンなしの東京・大阪の固定電話は 2-4-4、フリーダイヤルは 4-3-3', () => {
+    expect(splitForFieldCount('phone', '0312345678', none(3))).toEqual(['03', '1234', '5678']);
+    expect(splitForFieldCount('phone', '0120123456', none(3))).toEqual(['0120', '123', '456']);
+  });
+
+  it('市外局番の桁数が決まらない固定電話は推測しない', () => {
+    expect(splitForFieldCount('phone', '0451234567', none(3))).toEqual(['0451234567']);
+  });
+
+  it('各欄の maxlength の合計が桁数と一致すれば、その長さで区切る', () => {
+    expect(splitForFieldCount('phone', '0451234567', [3, 3, 4])).toEqual(['045', '123', '4567']);
+    expect(splitForFieldCount('phone', '0467123456', [4, 2, 4])).toEqual(['0467', '12', '3456']);
+  });
+
+  it('ハイフン区切りのパーツ数が欄の数と一致すれば maxlength より優先する', () => {
+    expect(splitForFieldCount('phone', '0467-12-3456', [5, 4, 4])).toEqual(['0467', '12', '3456']);
   });
 });
