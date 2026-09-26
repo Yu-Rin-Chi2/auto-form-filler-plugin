@@ -1,0 +1,339 @@
+/*
+ * popup / options 共通のデザイントークンと基本部品（03-uiux 5 章）。
+ * 各画面の CSS はこのファイルの変数だけを参照し、色の直書きをしない。
+ */
+
+:root {
+  --color-bg: #ffffff;
+  --color-canvas: #f3f5fa;
+  --color-surface: #f6f7f9;
+  --color-surface-strong: #eceff5;
+  --color-text: #111827;
+  --color-text-muted: #6b7280;
+  --color-text-subtle: #9ca3af;
+  --color-accent: #2563eb;
+  --color-accent-strong: #1d4ed8;
+  --color-accent-soft: rgba(37, 99, 235, 0.1);
+  --color-accent-ring: rgba(37, 99, 235, 0.28);
+  --color-success: #16a34a;
+  --color-success-soft: rgba(22, 163, 74, 0.1);
+  --color-warning: #d97706;
+  --color-warning-soft: rgba(217, 119, 6, 0.12);
+  --color-error: #dc2626;
+  --color-error-soft: rgba(220, 38, 38, 0.1);
+  --color-neutral: #94a3b8;
+  --color-border: #e5e7eb;
+  --color-border-strong: #d1d5db;
+
+  /* 主ボタンの塗り。白文字とのコントラストはライト／ダークとも AA 以上 */
+  --gradient-accent: linear-gradient(135deg, #2563eb 0%, #4338ca 100%);
+  --gradient-accent-hover: linear-gradient(135deg, #1d4ed8 0%, #3730a3 100%);
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 32px -8px rgba(15, 23, 42, 0.22);
+  --shadow-accent: 0 6px 16px -6px rgba(37, 99, 235, 0.55);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #1b1d23;
+    --color-canvas: #131418;
+    --color-surface: #24272f;
+    --color-surface-strong: #2d313a;
+    --color-text: #eceef2;
+    --color-text-muted: #a1a7b3;
+    --color-text-subtle: #7a808c;
+    --color-accent: #7aa7ff;
+    --color-accent-strong: #9dbdff;
+    --color-accent-soft: rgba(122, 167, 255, 0.14);
+    --color-accent-ring: rgba(122, 167, 255, 0.35);
+    --color-success: #4ade80;
+    --color-success-soft: rgba(74, 222, 128, 0.13);
+    --color-warning: #fbbf24;
+    --color-warning-soft: rgba(251, 191, 36, 0.14);
+    --color-error: #f87171;
+    --color-error-soft: rgba(248, 113, 113, 0.14);
+    --color-neutral: #64748b;
+    --color-border: #33363f;
+    --color-border-strong: #454a55;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.25);
+    --shadow-lg: 0 16px 40px -8px rgba(0, 0, 0, 0.6);
+    --shadow-accent: 0 6px 18px -6px rgba(67, 56, 202, 0.7);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--color-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'Hiragino Sans',
+    'Noto Sans JP',
+    sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+p {
+  margin: 0;
+}
+
+/* ---------- ボタン ---------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s var(--ease-out);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-ring);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.button--primary {
+  background: var(--gradient-accent);
+  color: #ffffff;
+  box-shadow: var(--shadow-accent);
+}
+
+.button--primary:hover:not(:disabled) {
+  background: var(--gradient-accent-hover);
+}
+
+.button--primary:focus-visible {
+  box-shadow:
+    var(--shadow-accent),
+    0 0 0 3px var(--color-accent-ring);
+}
+
+.button--secondary {
+  background: var(--color-bg);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.button--secondary:hover:not(:disabled) {
+  background: var(--color-surface);
+}
+
+.button--ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.button--ghost:hover:not(:disabled) {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.button--danger {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--color-error) 45%, transparent);
+  color: var(--color-error);
+}
+
+.button--danger:hover:not(:disabled) {
+  background: var(--color-error-soft);
+}
+
+.button--small {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.icon-button:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.icon-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-ring);
+}
+
+/* ---------- ブランド ---------- */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.brand__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--gradient-accent);
+  color: #ffffff;
+  box-shadow: var(--shadow-accent);
+  flex-shrink: 0;
+}
+
+/* ---------- プロフィールのアバター（識別色 + 頭文字） ---------- */
+
+.avatar {
+  --avatar-size: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 999px;
+  background: var(--profile-color, var(--color-accent));
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.28), rgba(0, 0, 0, 0.08));
+  color: #ffffff;
+  font-size: calc(var(--avatar-size) * 0.42);
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* ---------- キーボードキー ---------- */
+
+kbd,
+.kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 6px;
+  border: 1px solid var(--color-border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* ---------- スピナー ---------- */
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200px 0;
+  }
+  to {
+    background-position: 200px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .spinner {
+    animation-duration: 1.4s !important;
+    animation-iteration-count: infinite !important;
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { TrashIcon } from '../../shared/ui/icons';
 
 type Props = {
   message: string;
@@ -33,7 +34,10 @@ export const ConfirmDialog = ({ message, confirmLabel, cancelLabel, onConfirm, o
         aria-label={message}
         onClick={(e) => e.stopPropagation()}
       >
-        <p>{message}</p>
+        <span className="dialog__icon" aria-hidden="true">
+          <TrashIcon size={20} />
+        </span>
+        <p className="dialog__message">{message}</p>
         <div className="button-row">
           <button type="button" className="button button--secondary" onClick={onCancel}>
             {cancelLabel}

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { MessageKey } from '../../shared/i18n';
 import type { Settings } from '../../shared/types';
+import { ExternalLinkIcon, KeyboardIcon, SlidersIcon, SparklesIcon } from '../../shared/ui/icons';
+import { ActionBar } from '../components/ActionBar';
 
 type Props = {
   settings: Settings;
@@ -8,11 +11,22 @@ type Props = {
   t: (key: MessageKey, params?: Record<string, string | number>) => string;
 };
 
+type ToggleKey = 'highlightFilled' | 'overwriteFilled' | 'previewBeforeFill' | 'debugLogging';
+
+const TOGGLES: { id: string; key: ToggleKey; label: MessageKey }[] = [
+  { id: 'highlight', key: 'highlightFilled', label: 'options.behavior.highlightLabel' },
+  { id: 'overwrite', key: 'overwriteFilled', label: 'options.behavior.overwriteLabel' },
+  { id: 'preview', key: 'previewBeforeFill', label: 'options.behavior.previewLabel' },
+  { id: 'debug', key: 'debugLogging', label: 'options.behavior.debugLabel' },
+];
+
 export const BehaviorTab = ({ settings, onPersistSettings, t }: Props) => {
   const [draft, setDraft] = useState<Settings>(settings);
   const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => setDraft(settings), [settings]);
+
+  const dirty = JSON.stringify(draft) !== JSON.stringify(settings);
 
   const handleSave = async () => {
     await onPersistSettings(draft);
@@ -25,79 +39,92 @@ export const BehaviorTab = ({ settings, onPersistSettings, t }: Props) => {
   };
 
   return (
-    <div className="card" style={{ maxWidth: 520 }}>
-      <div className="form-field">
-        <label className="form-field__label" htmlFor="threshold">
-          {t('options.behavior.thresholdLabel')}: {draft.confidenceThreshold.toFixed(2)}
-        </label>
-        <input
-          id="threshold"
-          type="range"
-          min={0}
-          max={1}
-          step={0.05}
-          value={draft.confidenceThreshold}
-          onChange={(e) => setDraft((d) => ({ ...d, confidenceThreshold: Number(e.target.value) }))}
-        />
-        <span className="form-field__hint">{t('options.behavior.thresholdHint')}</span>
-      </div>
+    <div className="settings-stack">
+      <section className="card form-section">
+        <header className="form-section__header">
+          <span className="form-section__icon">
+            <SlidersIcon size={16} />
+          </span>
+          <h3 className="section-title">{t('options.behavior.group.judgement')}</h3>
+        </header>
+        <div className="form-field">
+          <div className="range-head">
+            <label className="setting-label" htmlFor="threshold">
+              {t('options.behavior.thresholdLabel')}
+            </label>
+            <output className="value-badge" htmlFor="threshold">
+              {draft.confidenceThreshold.toFixed(2)}
+            </output>
+          </div>
+          <input
+            id="threshold"
+            className="range"
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={draft.confidenceThreshold}
+            style={{ '--range-fill': `${draft.confidenceThreshold * 100}%` } as CSSProperties}
+            onChange={(e) => setDraft((d) => ({ ...d, confidenceThreshold: Number(e.target.value) }))}
+          />
+          <div className="range-scale" aria-hidden="true">
+            <span>{t('options.behavior.thresholdLow')}</span>
+            <span>{t('options.behavior.thresholdHigh')}</span>
+          </div>
+          <span className="form-field__hint">{t('options.behavior.thresholdHint')}</span>
+        </div>
+      </section>
 
-      <div className="checkbox-row" style={{ marginTop: 12 }}>
-        <input
-          id="highlight"
-          type="checkbox"
-          checked={draft.highlightFilled}
-          onChange={(e) => setDraft((d) => ({ ...d, highlightFilled: e.target.checked }))}
-        />
-        <label htmlFor="highlight">{t('options.behavior.highlightLabel')}</label>
-      </div>
+      <section className="card form-section">
+        <header className="form-section__header">
+          <span className="form-section__icon">
+            <SparklesIcon size={16} />
+          </span>
+          <h3 className="section-title">{t('options.behavior.group.fill')}</h3>
+        </header>
+        <div className="toggle-list">
+          {TOGGLES.map(({ id, key, label }) => (
+            <label key={id} className="toggle-row" htmlFor={id}>
+              <span className="toggle-row__label">{t(label)}</span>
+              <input
+                id={id}
+                className="switch"
+                type="checkbox"
+                role="switch"
+                checked={draft[key]}
+                onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.checked }))}
+              />
+            </label>
+          ))}
+        </div>
+      </section>
 
-      <div className="checkbox-row" style={{ marginTop: 8 }}>
-        <input
-          id="overwrite"
-          type="checkbox"
-          checked={draft.overwriteFilled}
-          onChange={(e) => setDraft((d) => ({ ...d, overwriteFilled: e.target.checked }))}
-        />
-        <label htmlFor="overwrite">{t('options.behavior.overwriteLabel')}</label>
-      </div>
-
-      <div className="checkbox-row" style={{ marginTop: 8 }}>
-        <input
-          id="preview"
-          type="checkbox"
-          checked={draft.previewBeforeFill}
-          onChange={(e) => setDraft((d) => ({ ...d, previewBeforeFill: e.target.checked }))}
-        />
-        <label htmlFor="preview">{t('options.behavior.previewLabel')}</label>
-      </div>
-
-      <div className="checkbox-row" style={{ marginTop: 8 }}>
-        <input
-          id="debug"
-          type="checkbox"
-          checked={draft.debugLogging}
-          onChange={(e) => setDraft((d) => ({ ...d, debugLogging: e.target.checked }))}
-        />
-        <label htmlFor="debug">{t('options.behavior.debugLabel')}</label>
-      </div>
-
-      <div className="form-field" style={{ marginTop: 16 }}>
-        <span className="form-field__label">{t('options.behavior.shortcutLabel')}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <code>Alt+Shift+F</code>
-          <button type="button" className="advanced-toggle" onClick={openShortcuts}>
+      <section className="card form-section">
+        <header className="form-section__header">
+          <span className="form-section__icon">
+            <KeyboardIcon size={16} />
+          </span>
+          <h3 className="section-title">{t('options.behavior.shortcutLabel')}</h3>
+        </header>
+        <div className="shortcut-row">
+          <span className="shortcut-keys">
+            <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>
+          </span>
+          <button type="button" className="button button--secondary button--small" onClick={openShortcuts}>
             {t('options.behavior.shortcutChange')}
+            <ExternalLinkIcon size={13} />
           </button>
         </div>
-      </div>
+      </section>
 
-      <div className="button-row" style={{ marginTop: 20 }}>
-        {savedFlash && <span className="status-text status-text--success">{t('options.behavior.saved')}</span>}
+      <ActionBar
+        savedText={savedFlash ? t('options.behavior.saved') : null}
+        unsavedText={dirty ? t('common.unsaved') : null}
+      >
         <button type="button" className="button button--primary" onClick={() => void handleSave()}>
           {t('options.behavior.saveButton')}
         </button>
-      </div>
+      </ActionBar>
     </div>
   );
 };

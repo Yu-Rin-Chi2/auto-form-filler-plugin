@@ -1,7 +1,22 @@
+import type { ReactNode } from 'react';
 import type { MessageKey } from '../../shared/i18n';
 import { createCustomField, PRESET_COLORS } from '../../shared/profile-schema';
 import { SNS_FIELD_KEYS } from '../../shared/types';
 import type { AccountType, CustomField, Gender, Profile, ProfileFields } from '../../shared/types';
+import {
+  AtSignIcon,
+  BankIcon,
+  BuildingIcon,
+  CalendarIcon,
+  CheckIcon,
+  InfoIcon,
+  MailIcon,
+  MapPinIcon,
+  PuzzleIcon,
+  UserIcon,
+  XIcon,
+} from '../../shared/ui/icons';
+import { ProfileAvatar } from '../../shared/ui/ProfileAvatar';
 
 type Props = {
   draft: Profile;
@@ -32,6 +47,73 @@ const GENDER_OPTIONS: Gender[] = ['male', 'female', 'other', 'no_answer'];
 /** 銀行口座（口座名義は氏名・フリガナから自動生成するため入力欄を持たない） */
 const BANK_FIELDS: (keyof ProfileFields)[] = ['bank_name', 'bank_code', 'branch_name', 'branch_code', 'account_number'];
 const ACCOUNT_TYPE_OPTIONS: Exclude<AccountType, ''>[] = ['ordinary', 'current', 'savings'];
+
+function countFilled(fields: ProfileFields, keys: readonly (keyof ProfileFields)[]): number {
+  return keys.filter((k) => String(fields[k] ?? '').trim() !== '').length;
+}
+
+/** 見出し（アイコン + 名前 + 入力済み件数）付きのセクションカード */
+function Section({
+  icon,
+  title,
+  filled,
+  total,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  filled?: number;
+  total?: number;
+  children: ReactNode;
+}) {
+  const complete = total !== undefined && filled === total;
+  return (
+    <section className="card form-section">
+      <header className="form-section__header">
+        <span className="form-section__icon">{icon}</span>
+        <h3 className="section-title">{title}</h3>
+        {total !== undefined && (
+          <span className={`count-badge ${complete ? 'count-badge--complete' : ''}`} aria-hidden="true">
+            {complete && <CheckIcon size={11} strokeWidth={3} />}
+            {filled}/{total}
+          </span>
+        )}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+/** ラジオボタンをピル型の選択肢として並べる（input はネイティブのまま） */
+function ChoiceGroup<V extends string>({
+  name,
+  label,
+  options,
+  value,
+  optionLabel,
+  onSelect,
+}: {
+  name: string;
+  label: string;
+  options: V[];
+  value: string;
+  optionLabel: (v: V) => string;
+  onSelect: (v: V) => void;
+}) {
+  return (
+    <div className="form-field">
+      <span className="form-field__label">{label}</span>
+      <div role="radiogroup" aria-label={label} className="choice-group">
+        {options.map((o) => (
+          <label key={o} className="choice">
+            <input type="radio" name={name} checked={value === o} onChange={() => onSelect(o)} />
+            {optionLabel(o)}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function TextField({
   fieldKey,
@@ -116,8 +198,9 @@ function CustomFieldRow({
           onChange={(e) => onChange({ ...field, value: e.target.value })}
         />
       </div>
-      <div className="form-field" style={{ alignSelf: 'flex-end', flex: '0 0 auto' }}>
-        <button type="button" className="button button--secondary button--small" onClick={onRemove}>
+      <div className="form-field custom-field-row__remove">
+        <button type="button" className="button button--ghost button--small" onClick={onRemove}>
+          <XIcon size={14} />
           {t('options.profiles.custom.remove')}
         </button>
       </div>
@@ -128,18 +211,22 @@ function CustomFieldRow({
 export const ProfileForm = ({ draft, onChange, t }: Props) => {
   const customFields = draft.customFields ?? [];
   const setCustomFields = (next: CustomField[]) => onChange({ ...draft, customFields: next });
+  const setField = <K extends keyof ProfileFields>(key: K, value: ProfileFields[K]) =>
+    onChange({ ...draft, fields: { ...draft.fields, [key]: value } });
+  const f = draft.fields;
 
   return (
     <div className="profile-form">
-      <div className="card">
-        <div className="form-row">
+      <div className="card profile-hero">
+        <ProfileAvatar name={draft.name} color={draft.color} size={56} />
+        <div className="profile-hero__fields">
           <div className="form-field">
             <label className="form-field__label" htmlFor="profile-name">
               {t('options.profiles.nameLabel')}
             </label>
             <input
               id="profile-name"
-              className="text-input"
+              className="text-input text-input--large"
               type="text"
               value={draft.name}
               onChange={(e) => onChange({ ...draft, name: e.target.value })}
@@ -156,60 +243,87 @@ export const ProfileForm = ({ draft, onChange, t }: Props) => {
                   aria-checked={draft.color === color}
                   aria-label={color}
                   className={`color-swatch ${draft.color === color ? 'color-swatch--selected' : ''}`}
-                  style={{ background: color }}
+                  style={{ background: color, color }}
                   onClick={() => onChange({ ...draft, color })}
-                />
+                >
+                  {draft.color === color && <CheckIcon size={13} strokeWidth={3.2} />}
+                </button>
               ))}
             </div>
           </div>
         </div>
       </div>
 
-      <p className="hint">{t('options.profiles.hint')}</p>
+      <p className="callout callout--inline">
+        <InfoIcon size={15} />
+        {t('options.profiles.hint')}
+      </p>
 
-      <div className="card">
-        <h3 className="section-title">{t('options.profiles.section.name')}</h3>
+      <Section
+        icon={<UserIcon size={16} />}
+        title={t('options.profiles.section.name')}
+        filled={countFilled(f, NAME_FIELDS)}
+        total={NAME_FIELDS.length}
+      >
         <div className="form-row">
-          {NAME_FIELDS.map((f) => (
-            <TextField key={f} fieldKey={f} draft={draft} onChange={onChange} t={t} />
+          {NAME_FIELDS.map((k) => (
+            <TextField key={k} fieldKey={k} draft={draft} onChange={onChange} t={t} />
           ))}
         </div>
-      </div>
+      </Section>
 
-      <div className="card">
-        <h3 className="section-title">{t('options.profiles.section.contact')}</h3>
+      <Section
+        icon={<MailIcon size={16} />}
+        title={t('options.profiles.section.contact')}
+        filled={countFilled(f, ['email', 'phone'])}
+        total={2}
+      >
         <div className="form-row">
           <TextField fieldKey="email" draft={draft} onChange={onChange} t={t} />
           <TextField fieldKey="phone" draft={draft} onChange={onChange} t={t} />
         </div>
-      </div>
+      </Section>
 
-      <div className="card">
-        <h3 className="section-title">{t('options.profiles.section.address')}</h3>
+      <Section
+        icon={<MapPinIcon size={16} />}
+        title={t('options.profiles.section.address')}
+        filled={countFilled(f, ADDRESS_FIELDS)}
+        total={ADDRESS_FIELDS.length}
+      >
         <div className="form-row">
-          {ADDRESS_FIELDS.map((f) => (
-            <TextField key={f} fieldKey={f} draft={draft} onChange={onChange} t={t} />
+          {ADDRESS_FIELDS.map((k) => (
+            <TextField key={k} fieldKey={k} draft={draft} onChange={onChange} t={t} />
           ))}
         </div>
-        <p className="hint">{t('options.profiles.addressKanaHint')}</p>
+        <div className="subsection">
+          <p className="hint">{t('options.profiles.addressKanaHint')}</p>
+          <div className="form-row">
+            {ADDRESS_KANA_FIELDS.map((k) => (
+              <TextField key={k} fieldKey={k} draft={draft} onChange={onChange} t={t} />
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        icon={<BuildingIcon size={16} />}
+        title={t('options.profiles.section.affiliation')}
+        filled={countFilled(f, AFFILIATION_FIELDS)}
+        total={AFFILIATION_FIELDS.length}
+      >
         <div className="form-row">
-          {ADDRESS_KANA_FIELDS.map((f) => (
-            <TextField key={f} fieldKey={f} draft={draft} onChange={onChange} t={t} />
+          {AFFILIATION_FIELDS.map((k) => (
+            <TextField key={k} fieldKey={k} draft={draft} onChange={onChange} t={t} />
           ))}
         </div>
-      </div>
+      </Section>
 
-      <div className="card">
-        <h3 className="section-title">{t('options.profiles.section.affiliation')}</h3>
-        <div className="form-row">
-          {AFFILIATION_FIELDS.map((f) => (
-            <TextField key={f} fieldKey={f} draft={draft} onChange={onChange} t={t} />
-          ))}
-        </div>
-      </div>
-
-      <div className="card">
-        <h3 className="section-title">{t('options.profiles.section.other')}</h3>
+      <Section
+        icon={<CalendarIcon size={16} />}
+        title={t('options.profiles.section.other')}
+        filled={countFilled(f, ['birth_date', 'gender'])}
+        total={2}
+      >
         <div className="form-row">
           <div className="form-field">
             <label className="form-field__label" htmlFor="field-birth_date">
@@ -219,71 +333,58 @@ export const ProfileForm = ({ draft, onChange, t }: Props) => {
               id="field-birth_date"
               className="text-input"
               type="date"
-              value={draft.fields.birth_date}
-              onChange={(e) => onChange({ ...draft, fields: { ...draft.fields, birth_date: e.target.value } })}
+              value={f.birth_date}
+              onChange={(e) => setField('birth_date', e.target.value)}
             />
           </div>
-          <div className="form-field">
-            <span className="form-field__label">{t('options.profiles.field.gender')}</span>
-            <div role="radiogroup" aria-label={t('options.profiles.field.gender')} style={{ display: 'flex', gap: 12 }}>
-              {GENDER_OPTIONS.map((g) => (
-                <label key={g} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
-                  <input
-                    type="radio"
-                    name="gender"
-                    checked={draft.fields.gender === g}
-                    onChange={() => onChange({ ...draft, fields: { ...draft.fields, gender: g } })}
-                  />
-                  {t(`options.profiles.gender.${g}` as MessageKey)}
-                </label>
-              ))}
-            </div>
-          </div>
+          <ChoiceGroup
+            name="gender"
+            label={t('options.profiles.field.gender')}
+            options={GENDER_OPTIONS}
+            value={f.gender}
+            optionLabel={(g) => t(`options.profiles.gender.${g}` as MessageKey)}
+            onSelect={(g) => setField('gender', g)}
+          />
         </div>
-      </div>
+      </Section>
 
-      <div className="card">
-        <h3 className="section-title">{t('options.profiles.section.bank')}</h3>
+      <Section
+        icon={<BankIcon size={16} />}
+        title={t('options.profiles.section.bank')}
+        filled={countFilled(f, [...BANK_FIELDS, 'account_type'])}
+        total={BANK_FIELDS.length + 1}
+      >
         <p className="hint">{t('options.profiles.bankHint')}</p>
         <div className="form-row">
-          {BANK_FIELDS.map((f) => (
-            <TextField key={f} fieldKey={f} draft={draft} onChange={onChange} t={t} />
+          {BANK_FIELDS.map((k) => (
+            <TextField key={k} fieldKey={k} draft={draft} onChange={onChange} t={t} />
           ))}
-          <div className="form-field">
-            <span className="form-field__label">{t('options.profiles.field.account_type')}</span>
-            <div
-              role="radiogroup"
-              aria-label={t('options.profiles.field.account_type')}
-              style={{ display: 'flex', gap: 12 }}
-            >
-              {ACCOUNT_TYPE_OPTIONS.map((a) => (
-                <label key={a} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
-                  <input
-                    type="radio"
-                    name="account_type"
-                    checked={draft.fields.account_type === a}
-                    onChange={() => onChange({ ...draft, fields: { ...draft.fields, account_type: a } })}
-                  />
-                  {t(`options.profiles.accountType.${a}` as MessageKey)}
-                </label>
-              ))}
-            </div>
-          </div>
+          <ChoiceGroup
+            name="account_type"
+            label={t('options.profiles.field.account_type')}
+            options={ACCOUNT_TYPE_OPTIONS}
+            value={f.account_type}
+            optionLabel={(a) => t(`options.profiles.accountType.${a}` as MessageKey)}
+            onSelect={(a) => setField('account_type', a)}
+          />
         </div>
-      </div>
+      </Section>
 
-      <div className="card">
-        <h3 className="section-title">{t('options.profiles.section.sns')}</h3>
+      <Section
+        icon={<AtSignIcon size={16} />}
+        title={t('options.profiles.section.sns')}
+        filled={countFilled(f, SNS_FIELD_KEYS)}
+        total={SNS_FIELD_KEYS.length}
+      >
         <p className="hint">{t('options.profiles.snsHint')}</p>
         <div className="form-row">
-          {SNS_FIELD_KEYS.map((f) => (
-            <TextField key={f} fieldKey={f} draft={draft} onChange={onChange} t={t} />
+          {SNS_FIELD_KEYS.map((k) => (
+            <TextField key={k} fieldKey={k} draft={draft} onChange={onChange} t={t} />
           ))}
         </div>
-      </div>
+      </Section>
 
-      <div className="card">
-        <h3 className="section-title">{t('options.profiles.section.custom')}</h3>
+      <Section icon={<PuzzleIcon size={16} />} title={t('options.profiles.section.custom')}>
         <p className="hint">{t('options.profiles.customHint')}</p>
         {customFields.map((c, i) => (
           <CustomFieldRow
@@ -294,16 +395,14 @@ export const ProfileForm = ({ draft, onChange, t }: Props) => {
             onRemove={() => setCustomFields(customFields.filter((_, j) => j !== i))}
           />
         ))}
-        <div className="button-row" style={{ justifyContent: 'flex-start' }}>
-          <button
-            type="button"
-            className="button button--secondary button--small"
-            onClick={() => setCustomFields([...customFields, createCustomField()])}
-          >
-            {t('options.profiles.custom.add')}
-          </button>
-        </div>
-      </div>
+        <button
+          type="button"
+          className="add-button add-button--inline"
+          onClick={() => setCustomFields([...customFields, createCustomField()])}
+        >
+          {t('options.profiles.custom.add')}
+        </button>
+      </Section>
     </div>
   );
 };

@@ -2,8 +2,24 @@ import { useEffect, useRef, useState } from 'react';
 import type { MessageKey } from '../../shared/i18n';
 import { buildExportPayload, createProfile, duplicateProfile, safeParseJson, validateImportPayload } from '../../shared/profile-schema';
 import type { Profile, ProfileExport } from '../../shared/types';
+import { CopyIcon, DownloadIcon, TrashIcon, UploadIcon } from '../../shared/ui/icons';
+import { ProfileAvatar } from '../../shared/ui/ProfileAvatar';
+import { ActionBar } from '../components/ActionBar';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ProfileForm } from '../components/ProfileForm';
+
+/** 値が入っている項目の数（一覧の副情報。値そのものは出さない） */
+function countFilled(p: Profile): number {
+  const fixed = Object.values(p.fields).filter((v) => typeof v === 'string' && v.trim() !== '').length;
+  const custom = (p.customFields ?? []).filter((c) => c.value.trim() !== '').length;
+  return fixed + custom;
+}
+
+/** 保存済みの内容と下書きが異なるか（updatedAt は保存のたびに変わるため比較しない） */
+function isDirty(saved: Profile | undefined, draft: Profile | null): boolean {
+  if (!saved || !draft) return false;
+  return JSON.stringify({ ...saved, updatedAt: '' }) !== JSON.stringify({ ...draft, updatedAt: '' });
+}
 
 type Props = {
   profiles: Profile[];
@@ -19,6 +35,10 @@ export const ProfilesTab = ({ profiles, onPersistProfiles, t }: Props) => {
   const [importError, setImportError] = useState<string | null>(null);
   const [pendingImport, setPendingImport] = useState<{ data: ProfileExport; duplicateIds: string[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dirty = isDirty(
+    profiles.find((p) => p.id === draft?.id),
+    draft,
+  );
 
   useEffect(() => {
     if (!profiles.some((p) => p.id === selectedId)) {
@@ -119,34 +139,44 @@ export const ProfilesTab = ({ profiles, onPersistProfiles, t }: Props) => {
   return (
     <div className="profiles-layout">
       <aside className="profiles-sidebar">
-        <ul className="profile-list">
-          {profiles.map((p) => (
-            <li key={p.id}>
-              <button
-                type="button"
-                className={`profile-list-item ${p.id === selectedId ? 'profile-list-item--active' : ''}`}
-                onClick={() => setSelectedId(p.id)}
-              >
-                <span className="color-dot" style={{ background: p.color }} />
-                {p.name}
-              </button>
-            </li>
-          ))}
-        </ul>
-        {profiles.length === 0 && <p className="hint">{t('options.profiles.empty')}</p>}
-        <button type="button" className="button button--secondary button--small" onClick={() => void handleAdd()}>
-          {t('options.profiles.addButton')}
-        </button>
+        <div className="card card--flush">
+          <ul className="profile-list">
+            {profiles.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  className={`profile-list-item ${p.id === selectedId ? 'profile-list-item--active' : ''}`}
+                  aria-current={p.id === selectedId ? 'true' : undefined}
+                  onClick={() => setSelectedId(p.id)}
+                >
+                  <ProfileAvatar name={p.name} color={p.color} size={30} />
+                  <span className="profile-list-item__text">
+                    <span className="profile-list-item__name">{p.name}</span>
+                    <span className="profile-list-item__meta" aria-hidden="true">
+                      {t('options.profiles.filledCount', { n: countFilled(p) })}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {profiles.length === 0 && <p className="hint profile-list__empty">{t('options.profiles.empty')}</p>}
+          <button type="button" className="add-button" onClick={() => void handleAdd()}>
+            {t('options.profiles.addButton')}
+          </button>
+        </div>
 
-        <div className="button-row" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+        <div className="sidebar-actions">
           <button
             type="button"
             className="button button--secondary button--small"
             onClick={() => fileInputRef.current?.click()}
           >
+            <UploadIcon size={14} />
             {t('options.profiles.importButton')}
           </button>
           <button type="button" className="button button--secondary button--small" onClick={handleExport}>
+            <DownloadIcon size={14} />
             {t('options.profiles.exportButton')}
           </button>
           <input
@@ -159,8 +189,8 @@ export const ProfilesTab = ({ profiles, onPersistProfiles, t }: Props) => {
         </div>
         {importError && <p className="status-text status-text--error">{importError}</p>}
         {pendingImport && (
-          <div className="card">
-            <p>{t('options.profiles.importConfirm')}</p>
+          <div className="card card--compact import-confirm">
+            <p className="import-confirm__title">{t('options.profiles.importConfirm')}</p>
             {pendingImport.duplicateIds.length > 0 && (
               <p className="hint">
                 {t('options.profiles.importDuplicateWarning', { n: pendingImport.duplicateIds.length })}
@@ -187,11 +217,14 @@ export const ProfilesTab = ({ profiles, onPersistProfiles, t }: Props) => {
       </aside>
 
       {draft && (
-        <div style={{ flex: 1, minWidth: 320 }}>
+        <div className="profiles-editor">
           <ProfileForm draft={draft} onChange={setDraft} t={t} />
-          <div className="button-row" style={{ marginTop: 16 }}>
-            {savedFlash && <span className="status-text status-text--success">{t('options.profiles.saved')}</span>}
-            <button type="button" className="button button--secondary" onClick={() => void handleDuplicate()}>
+          <ActionBar
+            savedText={savedFlash ? t('options.profiles.saved') : null}
+            unsavedText={dirty ? t('common.unsaved') : null}
+          >
+            <button type="button" className="button button--ghost" onClick={() => void handleDuplicate()}>
+              <CopyIcon size={14} />
               {t('options.profiles.duplicateButton')}
             </button>
             <button
@@ -199,12 +232,13 @@ export const ProfilesTab = ({ profiles, onPersistProfiles, t }: Props) => {
               className="button button--danger"
               onClick={() => setConfirmingDeleteId(draft.id)}
             >
+              <TrashIcon size={14} />
               {t('options.profiles.deleteButton')}
             </button>
             <button type="button" className="button button--primary" onClick={() => void handleSave()}>
               {t('options.profiles.saveButton')}
             </button>
-          </div>
+          </ActionBar>
         </div>
       )}
 
