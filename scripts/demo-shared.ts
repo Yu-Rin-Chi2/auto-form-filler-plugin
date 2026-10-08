@@ -28,14 +28,11 @@ const ANSWER_BY_NAME: Record<string, string> = {
 };
 
 export const demoHandler: JevHandler = (rawBody) => {
-  const body = rawBody as {
-    questions?: Record<string, unknown>;
-    state?: { fields?: Record<string, { name?: string }> };
-  };
+  // 中継サーバー（workers/）への POST /v1/infer と同じ形: fields は f0, f1, ... をキーにしたオブジェクト
+  const body = rawBody as { fields?: Record<string, { name?: string }> };
   const answers: Record<string, unknown> = {};
-  for (const id of Object.keys(body.questions ?? {})) {
-    const name = body.state?.fields?.[id]?.name ?? '';
-    answers[id] = buildChoiceAnswer(ANSWER_BY_NAME[name] ?? 'none');
+  for (const [id, field] of Object.entries(body.fields ?? {})) {
+    answers[id] = buildChoiceAnswer(ANSWER_BY_NAME[field.name ?? ''] ?? 'none');
   }
   return {
     status: 200,

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>新規会員登録 | サンプル通販</title>
+</head>
+<body>
+<!--
+  バリエーション 01: 日本の EC サイトに多い table レイアウト。
+  - ラベルは th、入力欄は td（label 要素の for なし）
+  - 姓・名が 1 つの td に並び、小さな span で「姓」「名」と書かれている
+  - 電話 3 分割（間に「-」の文字）、郵便番号 2 分割（「〒」付き）
+  - 都道府県 select は value がコード値（13）で表示が「東京都」
+  - 住所は「住所1（市区町村・番地）」「住所2（建物名）」
+  - パスワード欄・メルマガ checkbox は触らない
+-->
+<h1>新規会員登録</h1>
+<form action="#" method="post" onsubmit="return false">
+  <h2>お客様情報</h2>
+  <table class="form-table">
+    <tr>
+      <th>お名前 <span class="req">必須</span></th>
+      <td>
+        <span>姓</span><input type="text" id="sei" name="member[sei]" size="10" data-key="family_name" data-expect="鈴木">
+        <span>名</span><input type="text" id="mei" name="member[mei]" size="10" data-key="given_name" data-expect="一郎">
+      </td>
+    </tr>
+    <tr>
+      <th>フリガナ <span class="req">必須</span></th>
+      <td>
+        <span>セイ</span><input type="text" id="kana_sei" name="member[kana_sei]" size="10" data-key="family_name_kana" data-expect="スズキ">
+        <span>メイ</span><input type="text" id="kana_mei" name="member[kana_mei]" size="10" data-key="given_name_kana" data-expect="イチロウ">
+        <p class="note">全角カタカナでご入力ください</p>
+      </td>
+    </tr>
+    <tr>
+      <th>メールアドレス <span class="req">必須</span></th>
+      <td><input type="text" id="mail" name="member[mail]" size="40" data-key="email" data-expect="ichiro.suzuki.e2e@example.test"></td>
+    </tr>
+    <tr>
+      <th>メールアドレス（確認）</th>
+      <td><input type="text" id="mail2" name="member[mail_confirm]" size="40" data-key="email" data-expect="ichiro.suzuki.e2e@example.test"></td>
+    </tr>
+    <tr>
+      <th>パスワード</th>
+      <td><input type="password" id="pass" name="member[password]" data-expect=""></td>
+    </tr>
+    <tr>
+      <th>電話番号 <span class="req">必須</span></th>
+      <td>
+        <input type="text" id="tel1" name="member[tel01]" maxlength="5" size="5" data-key="phone" data-expect="090"> -
+        <input type="text" id="tel2" name="member[tel02]" maxlength="4" size="4" data-key="phone" data-expect="1234"> -
+        <input type="text" id="tel3" name="member[tel03]" maxlength="4" size="4" data-key="phone" data-expect="5678">
+      </td>
+    </tr>
+  </table>
+
+  <h2>ご住所</h2>
+  <table class="form-table">
+    <tr>
+      <th>郵便番号 <span class="req">必須</span></th>
+      <td>〒<input type="text" id="zip1" name="member[zip01]" maxlength="3" size="3" data-key="postal_code" data-expect="100"> -
+        <input type="text" id="zip2" name="member[zip02]" maxlength="4" size="4" data-key="postal_code" data-expect="0001"></td>
+    </tr>
+    <tr>
+      <th>都道府県 <span class="req">必須</span></th>
+      <td>
+        <select id="pref" name="member[pref]" data-key="prefecture" data-expect="13">
+          <option value="">選択してください</option>
+          <option value="1">北海道</option>
+          <option value="2">青森県</option>
+          <option value="11">埼玉県</option>
+          <option value="12">千葉県</option>
+          <option value="13">東京都</option>
+          <option value="14">神奈川県</option>
+          <option value="27">大阪府</option>
+          <option value="47">沖縄県</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <th>住所1（市区町村・番地） <span class="req">必須</span></th>
+      <td><input type="text" id="addr01" name="member[addr01]" size="50" data-key="city" data-expect="千代田区千代田9-9-9"></td>
+    </tr>
+    <tr>
+      <th>住所2（建物名・部屋番号）</th>
+      <td><input type="text" id="addr02" name="member[addr02]" size="50" data-key="address_line2" data-expect="イーツーイータワー505"></td>
+    </tr>
+  </table>
+
+  <h2>その他</h2>
+  <table class="form-table">
+    <tr>
+      <th>性別</th>
+      <td>
+        <label><input type="radio" id="sex1" name="member[sex]" value="1" data-key="gender" data-expect-checked="true">男性</label>
+        <label><input type="radio" id="sex2" name="member[sex]" value="2" data-expect-checked="false">女性</label>
+      </td>
+    </tr>
+    <tr>
+      <th>生年月日</th>
+      <td>
+        <select id="birth_y" name="member[year]" data-key="birth_year" data-expect="1990">
+          <option value="">----</option>
+          <option value="1989">1989</option><option value="1990">1990</option><option value="1991">1991</option>
+        </select>年
+        <select id="birth_m" name="member[month]" data-key="birth_month" data-expect="1">
+          <option value="">--</option>
+          <option value="1">1</option><option value="2">2</option><option value="12">12</option>
+        </select>月
+        <select id="birth_d" name="member[day]" data-key="birth_day" data-expect="31">
+          <option value="">--</option>
+          <option value="1">1</option><option value="30">30</option><option value="31">31</option>
+        </select>日
+      </td>
+    </tr>
+    <tr>
+      <th>メールマガジン</th>
+      <td><label><input type="checkbox" id="mailmaga" name="member[mailmaga]" value="1" data-expect-checked="false">受け取る</label></td>
+    </tr>
+  </table>
+  <button type="submit">確認画面へ</button>
+</form>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>講座受講申込（電子申請） | サンプル市</title>
+</head>
+<body>
+<!--
+  バリエーション 11: 自治体の電子申請に多い、注意書きの長いラベル。
+  - 氏名は placeholder に全角スペース → 全角スペースで区切る
+  - 生年月日は 1 欄のテキスト、placeholder「例）1980/01/01」→ スラッシュ区切りで入れる
+  - 電話番号は fieldset + legend の 3 分割
+  - 郵便番号は 2 分割（「〒」「-」の文字付き）
+  - 住所は「市区町村以降」1 欄（都道府県は固定のため欄がない）
+-->
+<h1>市民講座 受講申込</h1>
+<form action="#" onsubmit="return false">
+  <p><label for="q1">1. 申込者の氏名　※姓と名の間に全角スペースを入れてください（必須）</label><br>
+    <input type="text" id="q1" name="q1" placeholder="例）市役所　太郎" data-key="full_name" data-expect="鈴木　一郎"></p>
+  <p><label for="q2">2. 申込者の氏名（フリガナ）　※全角カタカナ（必須）</label><br>
+    <input type="text" id="q2" name="q2" placeholder="例）シヤクショ　タロウ" data-key="full_name_kana" data-expect="スズキ　イチロウ"></p>
+  <p><label for="q3">3. 生年月日（必須）</label><br>
+    <input type="text" id="q3" name="q3" placeholder="例）1980/01/01" data-key="birth_date" data-expect="1990/01/31"></p>
+  <fieldset>
+    <legend>4. 日中連絡のつく電話番号（必須）</legend>
+    <input type="text" id="q4_1" name="q4_1" size="5" aria-label="市外局番" data-key="phone" data-expect="090">-
+    <input type="text" id="q4_2" name="q4_2" size="4" aria-label="市内局番" data-key="phone" data-expect="1234">-
+    <input type="text" id="q4_3" name="q4_3" size="4" aria-label="加入者番号" data-key="phone" data-expect="5678">
+  </fieldset>
+  <p>5. 郵便番号<br>
+    〒<input type="text" id="q5_1" name="q5_1" size="3" maxlength="3" aria-label="郵便番号（前半3桁）" data-key="postal_code" data-expect="100">-<input type="text" id="q5_2" name="q5_2" size="4" maxlength="4" aria-label="郵便番号（後半4桁）" data-key="postal_code" data-expect="0001"></p>
+  <p><label for="q6">6. 住所（市区町村以降）　※マンション名・部屋番号まで</label><br>
+    <input type="text" id="q6" name="q6" size="60" data-key="city" data-expect="千代田区千代田9-9-9 イーツーイータワー505"></p>
+  <p><label for="q7">7. 年齢（申込日時点）</label><br>
+    <input type="text" id="q7" name="q7" size="3" data-key="age" data-expect="{{age}}"></p>
+  <p><label for="q8">8. 受講を希望する理由</label><br>
+    <textarea id="q8" name="q8" data-expect=""></textarea></p>
+  <button type="submit">申込内容を確認する</button>
+</form>
+</body>
+</html>

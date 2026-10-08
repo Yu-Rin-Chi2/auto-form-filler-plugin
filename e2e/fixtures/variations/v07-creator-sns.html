@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>クリエイター応募フォーム | サンプルメディア</title>
+</head>
+<body>
+<!--
+  バリエーション 07: クリエイター応募フォーム。SNS アカウント・URL・年齢。
+  - X は「@以降」の ID を求める（@ なしで入れる）
+  - Instagram / YouTube は URL 欄（type=url）→ プロフィール URL に変換して入れる
+  - GitHub はユーザー名
+  - ホームページ URL
+  - 年齢は number、性別は select（男 / 女 / その他）
+  - 活動名・自己 PR は触らない
+-->
+<h1>クリエイター応募フォーム</h1>
+<form action="#" onsubmit="return false">
+  <section>
+    <h2>基本情報</h2>
+    <p><label>活動名（ペンネーム）<br><input type="text" name="pen_name" id="pen_name" data-expect=""></label></p>
+    <p><label>氏名（本名）<br><input type="text" name="real_name" id="real_name" data-key="full_name" data-expect="鈴木 一郎"></label></p>
+    <p><label>年齢<br><input type="number" name="age" id="age" min="0" max="120" data-key="age" data-expect="{{age}}"></label></p>
+    <p><label>性別<br>
+      <select name="sex" id="sex" data-key="gender" data-expect="男">
+        <option value="">選択してください</option><option value="男">男</option><option value="女">女</option><option value="その他">その他</option>
+      </select></label></p>
+    <p><label>メールアドレス<br><input type="email" name="mail" id="mail" data-key="email" data-expect="ichiro.suzuki.e2e@example.test"></label></p>
+  </section>
+  <section>
+    <h2>活動しているアカウント</h2>
+    <p><label>X（旧Twitter）アカウント<br>@<input type="text" name="twitter_id" id="twitter_id" placeholder="@以降を入力" data-key="sns_x" data-expect="e2e_ichiro"></label></p>
+    <p><label>Instagram の URL<br><input type="url" name="instagram_url" id="instagram_url" placeholder="https://www.instagram.com/..." data-key="sns_instagram" data-expect="https://www.instagram.com/e2e_ichiro"></label></p>
+    <p><label>YouTube チャンネル URL<br><input type="url" name="youtube_url" id="youtube_url" placeholder="https://www.youtube.com/@..." data-key="sns_youtube" data-expect="https://www.youtube.com/@e2eichiro"></label></p>
+    <p><label>GitHub ユーザー名<br><input type="text" name="github" id="github" data-key="sns_github" data-expect="e2e-ichiro"></label></p>
+    <p><label>ポートフォリオ・ホームページの URL<br><input type="url" name="site_url" id="site_url" data-key="website" data-expect="https://e2e.example.test"></label></p>
+  </section>
+  <section>
+    <h2>自己 PR</h2>
+    <p><label>自己 PR（400 字以内）<br><textarea name="pr" id="pr" data-expect=""></textarea></label></p>
+  </section>
+  <button type="submit">応募する</button>
+</form>
+</body>
+</html>

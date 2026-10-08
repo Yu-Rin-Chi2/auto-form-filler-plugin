@@ -4,11 +4,14 @@
  */
 import { katakanaToHiragana, shouldConvertToHiragana } from '../../shared/kana';
 import {
+  formatBirthDateLike,
   isSnsFieldKey,
   parseBirthDate,
   resolveProfileFieldValue,
+  snsHandle,
   snsProfileUrl,
   splitForFieldCount,
+  wantsBareHandle,
   wantsUrl,
 } from '../../shared/derive';
 import { isCustomFieldKey } from '../../shared/types';
@@ -147,9 +150,14 @@ function formatForFieldType(
     if (!parts) return '';
     return `${parts.year}-${String(parts.month).padStart(2, '0')}`;
   }
-  // SNS: URL を求める欄にはプロフィール URL、それ以外は保存値（ID）をそのまま
-  if (isSnsFieldKey(choiceKey) && wantsUrl(field)) {
-    return snsProfileUrl(choiceKey, rawValue);
+  // テキスト欄の生年月日は placeholder の例（1980/01/01 等）と同じ書き方にする。type=date は YYYY-MM-DD のまま
+  if (choiceKey === 'birth_date' && field.tag === 'input' && field.type !== 'date') {
+    return formatBirthDateLike(rawValue, field.placeholder);
+  }
+  // SNS: URL を求める欄にはプロフィール URL、「@以降」等の欄には @ 抜きの ID、それ以外は保存値（ID）をそのまま
+  if (isSnsFieldKey(choiceKey)) {
+    if (wantsUrl(field)) return snsProfileUrl(choiceKey, rawValue);
+    if (wantsBareHandle(field)) return snsHandle(rawValue);
   }
   return rawValue;
 }

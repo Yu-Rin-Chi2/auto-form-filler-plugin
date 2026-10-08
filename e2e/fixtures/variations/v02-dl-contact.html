@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>お問い合わせ | サンプル工務店</title>
+</head>
+<body>
+<!--
+  バリエーション 02: WordPress のフォームプラグインに多い dl/dt/dd レイアウト。
+  - ラベルは dt、入力欄は dd（label 要素なし）
+  - 「ふりがな」欄はひらがなで入れる
+  - 電話番号は 1 欄で、placeholder がハイフン付き
+  - 住所は 1 欄（都道府県から建物名まで連結）
+  - 自由記述・お問い合わせ種別・同意 checkbox は触らない
+-->
+<h1>お問い合わせ</h1>
+<form class="mw_wp_form" action="#" onsubmit="return false">
+  <dl class="contact-list">
+    <dt>お問い合わせ種別<span class="must">必須</span></dt>
+    <dd>
+      <select name="inquiry_type" id="inquiry_type" data-expect="">
+        <option value="">選択してください</option>
+        <option value="見積もり">お見積もり</option>
+        <option value="資料請求">資料請求</option>
+        <option value="その他">その他</option>
+      </select>
+    </dd>
+    <dt>お名前<span class="must">必須</span></dt>
+    <dd><input type="text" name="your_name" id="your_name" placeholder="例）山田 太郎" data-key="full_name" data-expect="鈴木 一郎"></dd>
+    <dt>ふりがな<span class="must">必須</span></dt>
+    <dd><input type="text" name="your_furigana" id="your_furigana" placeholder="例）やまだ たろう" data-key="full_name_kana" data-expect="すずき いちろう"></dd>
+    <dt>会社名</dt>
+    <dd><input type="text" name="company" id="company_name" data-key="company" data-expect="イーツーイー株式会社"></dd>
+    <dt>メールアドレス<span class="must">必須</span></dt>
+    <dd><input type="email" name="email" id="mail_address" placeholder="例）info@example.com" data-key="email" data-expect="ichiro.suzuki.e2e@example.test"></dd>
+    <dt>電話番号</dt>
+    <dd><input type="tel" name="tel" id="tel_number" placeholder="例）03-1234-5678" data-key="phone" data-expect="090-1234-5678"></dd>
+    <dt>郵便番号</dt>
+    <dd>〒 <input type="text" name="zip" id="zip_code" placeholder="例）100-0001" data-key="postal_code" data-expect="100-0001"></dd>
+    <dt>ご住所</dt>
+    <dd><input type="text" name="address" id="address_all" placeholder="例）東京都千代田区千代田1-1-1" data-key="address_full" data-expect="東京都千代田区千代田9-9-9イーツーイータワー505"></dd>
+    <dt>お問い合わせ内容<span class="must">必須</span></dt>
+    <dd><textarea name="message" id="message" rows="8" data-expect=""></textarea></dd>
+    <dt>個人情報の取り扱い</dt>
+    <dd><label><input type="checkbox" name="privacy" id="privacy" value="同意する" data-expect-checked="false">個人情報の取り扱いに同意する</label></dd>
+  </dl>
+  <p><input type="submit" value="確認画面へ進む"></p>
+</form>
+</body>
+</html>

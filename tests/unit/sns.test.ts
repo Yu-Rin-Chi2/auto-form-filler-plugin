@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { resolveFill } from '../../src/background/resolve/resolve';
-import { snsHandle, snsProfileUrl, wantsUrl } from '../../src/shared/derive';
+import { snsHandle, snsProfileUrl, wantsBareHandle, wantsUrl } from '../../src/shared/derive';
 import { PROFILE_FIELD_DESCRIPTIONS } from '../../workers/src/profile-fields';
 import { createEmptyProfileFields } from '../../src/shared/profile-schema';
 import { SNS_FIELD_KEYS } from '../../src/shared/types';
@@ -79,6 +79,31 @@ describe('resolveFill: SNS の出し分け', () => {
     // URL で保存していても、ID 欄には保存値のまま（勝手に切り出さない）
     expect(assignments.f2).toEqual({ kind: 'text', value: 'https://github.com/yamada' });
     expect(outcomes[3]?.reason).toBe('skipped_unset');
+  });
+});
+
+describe('wantsBareHandle', () => {
+  it('「@以降」「@なし」「@不要」「without @」は @ 抜きの ID を求める欄', () => {
+    expect(wantsBareHandle({ label: 'X アカウント', placeholder: '@以降を入力' })).toBe(true);
+    expect(wantsBareHandle({ label: 'Instagram ID（@なし）' })).toBe(true);
+    expect(wantsBareHandle({ label: 'ユーザー名（＠マーク不要）' })).toBe(true);
+    expect(wantsBareHandle({ label: 'Username (without @)' })).toBe(true);
+  });
+  it('@ に触れていない欄・@ 付きを求める欄は対象外', () => {
+    expect(wantsBareHandle({ label: 'X（Twitter）ID' })).toBe(false);
+    expect(wantsBareHandle({ label: 'X アカウント', placeholder: '@example' })).toBe(false);
+  });
+});
+
+describe('resolveFill: @ 抜きの ID 欄', () => {
+  it('「@以降を入力」の欄には @ を除いて入れる', () => {
+    const { assignments } = resolveFill({
+      fields: { f0: extracted('X アカウント', { placeholder: '@以降を入力' }) },
+      answers: { f0: { choice: 'sns_x', confidence: 0.9 } },
+      profileFields: fields({ sns_x: '@yamada' }),
+      settings: SETTINGS,
+    });
+    expect(assignments.f0).toEqual({ kind: 'text', value: 'yamada' });
   });
 });
 

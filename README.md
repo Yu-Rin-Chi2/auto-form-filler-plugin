@@ -1,4 +1,4 @@
-# Auto Form Filler
+# フォーム入力・瞬
 
 [![Latest release](https://img.shields.io/github/v/release/Yu-Rin-Chi2/auto-form-filler-plugin?label=release)](https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -61,9 +61,9 @@ Jev（TypeSafe AI の判定特化モデル）でフォームの項目を判定�
 
 #### 3. 展開したフォルダを読み込む
 
-**「パッケージ化されていない拡張機能を読み込む」** を押し、手順 1 で展開したフォルダ（`manifest.json` が直下にあるフォルダ）を選択します。一覧に「Auto Form Filler」が表示されれば完了です。
+**「パッケージ化されていない拡張機能を読み込む」** を押し、手順 1 で展開したフォルダ（`manifest.json` が直下にあるフォルダ）を選択します。一覧に「フォーム入力・瞬」が表示されれば完了です。
 
-![Auto Form Filler が読み込まれた状態](docs/images/install/04-loaded.png)
+![フォーム入力・瞬が読み込まれた状態](docs/images/install/04-loaded.png)
 
 #### 4. プロフィールを登録する
 
@@ -75,7 +75,7 @@ Jev（TypeSafe AI の判定特化モデル）でフォームの項目を判定�
 
 <img src="docs/images/install/06-popup.png" alt="ポップアップ" width="360">
 
-> ツールバーにアイコンが見当たらないときは、パズルピース型の「拡張機能」ボタンから Auto Form Filler をピン留めしてください。
+> ツールバーにアイコンが見当たらないときは、パズルピース型の「拡張機能」ボタンから「フォーム入力・瞬」をピン留めしてください。
 
 ## 判定の仕組みと費用
 

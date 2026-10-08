@@ -12,7 +12,7 @@ export type Locale = 'ja' | 'en';
 
 export const MESSAGES = {
   ja: {
-    'app.name': 'Auto Form Filler',
+    'app.name': 'フォーム入力・瞬',
     'popup.settingsAria': '設定を開く',
     'popup.profileLabel': 'プロフィール',
     'popup.profilePlaceholder': 'プロフィールを選択',
@@ -20,6 +20,7 @@ export const MESSAGES = {
     'popup.runningButton': '判定中…',
     'popup.retryButton': 'もう一度入力',
     'popup.shortcutHint': 'Alt+Shift+F でも実行できます',
+    'popup.slowHint': 'しばらく使われていないと、判定の準備に 30 秒ほどかかることがあります。このままお待ちください',
     'popup.lastResult': '前回: {filled}件入力・{skipped}件スキップ',
     'popup.noProfileTitle': 'プロフィールがありません',
     'popup.noProfileBody': '氏名や住所を登録すると入力できるようになります。',
@@ -199,7 +200,7 @@ export const MESSAGES = {
     'common.unsaved': '未保存の変更があります',
   },
   en: {
-    'app.name': 'Auto Form Filler',
+    'app.name': 'Form Fill: Instant',
     'popup.settingsAria': 'Open settings',
     'popup.profileLabel': 'Profile',
     'popup.profilePlaceholder': 'Select a profile',
@@ -207,6 +208,7 @@ export const MESSAGES = {
     'popup.runningButton': 'Judging…',
     'popup.retryButton': 'Fill again',
     'popup.shortcutHint': 'You can also run this with Alt+Shift+F',
+    'popup.slowHint': 'If it has not been used for a while, getting ready can take about 30 seconds. Please wait.',
     'popup.lastResult': 'Last time: {filled} filled, {skipped} skipped',
     'popup.noProfileTitle': 'No profile yet',
     'popup.noProfileBody': 'Create a profile with your name and address to start filling forms.',

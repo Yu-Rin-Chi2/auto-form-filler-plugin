@@ -36,10 +36,11 @@ export async function requestFrameOrigins(origins: string[]): Promise<boolean> {
   return chrome.permissions.request({ origins: origins.map(originToPattern) });
 }
 
-/** ユーザーが許可した iframe 用オリジンの一覧（固定のプロキシ Worker ホストを除く） */
+/** ユーザーが許可した iframe 用オリジンの一覧（manifest に固定で書いたホスト権限は取り消せないので除く） */
 export async function listGrantedFrameOrigins(): Promise<string[]> {
   const all = await chrome.permissions.getAll();
-  return (all.origins ?? []).filter((p) => !FIXED_ORIGIN_PATTERNS.has(p)).map(patternToOrigin);
+  const fixed = new Set([...FIXED_ORIGIN_PATTERNS, ...(chrome.runtime.getManifest().host_permissions ?? [])]);
+  return (all.origins ?? []).filter((p) => !fixed.has(p)).map(patternToOrigin);
 }
 
 export async function revokeFrameOrigin(origin: string): Promise<boolean> {

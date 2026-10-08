@@ -168,7 +168,8 @@ export function showToast(message: string): void {
   const icon = el('span', 'icon');
   icon.appendChild(createCheckIcon());
   const content = el('div', 'content');
-  content.appendChild(el('p', 'eyebrow', 'Auto Form Filler'));
+  // content script は Settings.locale を持たないため、manifest 用の拡張名（ブラウザ言語）を使う
+  content.appendChild(el('p', 'eyebrow', chrome.i18n?.getMessage('ext_name') || 'Form Fill: Instant'));
   content.appendChild(el('p', 'title', firstLine.replace(/^✓\s*/, '')));
   if (restLines.length > 0) content.appendChild(el('p', 'body', restLines.join('\n')));
 

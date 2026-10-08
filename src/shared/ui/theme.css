@@ -229,10 +229,6 @@ p {
   justify-content: center;
   width: 26px;
   height: 26px;
-  border-radius: 8px;
-  background: var(--gradient-accent);
-  color: #ffffff;
-  box-shadow: var(--shadow-accent);
   flex-shrink: 0;
 }
 

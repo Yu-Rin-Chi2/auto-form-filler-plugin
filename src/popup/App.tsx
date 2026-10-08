@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { MessageKey } from '../shared/i18n';
 import { useLocale } from '../shared/useLocale';
 import { hostFromUrl, timeAgo } from '../shared/format';
@@ -89,17 +89,34 @@ const Breakdown = ({ result, t }: { result: FillResult; t: T }) => {
   );
 };
 
+/**
+ * 判定が長引いているか。中継先の AI はしばらく使われていないと、最初の 1 回に 30 秒ほどかかることがある。
+ * 固まったと思われて閉じられないよう、一定時間を過ぎたら案内を出す
+ */
+const SLOW_HINT_AFTER_MS = 5000;
+function useSlowRunning(running: boolean): boolean {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    setSlow(false);
+    if (!running) return;
+    const timer = setTimeout(() => setSlow(true), SLOW_HINT_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [running]);
+  return slow;
+}
+
 export const App = () => {
   const { t, locale } = useLocale();
   const state = usePopupState();
   const [showDetail, setShowDetail] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const slowRunning = useSlowRunning(state.running);
 
   const header = (
     <header className="popup__header">
       <div className="brand">
         <span className="brand__mark">
-          <LogoMark size={18} />
+          <LogoMark size={26} />
         </span>
         {t('app.name')}
       </div>
@@ -218,6 +235,11 @@ export const App = () => {
         </button>
 
         {!running && !result && <ShortcutHint text={t('popup.shortcutHint')} />}
+        {running && slowRunning && (
+          <p className="hint" role="status">
+            {t('popup.slowHint')}
+          </p>
+        )}
 
         {!running && result && hasError && (
           <div className="summary-card summary-card--error" role="alert" aria-live="polite">

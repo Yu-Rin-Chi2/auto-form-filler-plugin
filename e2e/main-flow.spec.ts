@@ -121,7 +121,8 @@ test.describe('追加フィクスチャのメインフロー（E2E-FLOW-03/04/06
     await expect(formPage.locator('input[name="entry.1055556677"]')).toHaveValue(
       'ichiro.suzuki.e2e@example.test',
     );
-    await expect(formPage.locator('input[name="entry.1058889900"]')).toHaveValue('090-1234-5678');
+    // ラベルが「電話番号（ハイフンなし）」なのでハイフンを取り除いて入れる
+    await expect(formPage.locator('input[name="entry.1058889900"]')).toHaveValue('09012345678');
     // address_full: prefecture + city + address_line1 + address_line2 を区切りなしで連結
     await expect(formPage.locator('input[name="entry.1061112233"]')).toHaveValue(
       '東京都千代田区千代田9-9-9イーツーイータワー505',

@@ -26,13 +26,9 @@ function Icon({ size = 16, children, ...rest }: IconProps & { children: ReactNod
   );
 }
 
-/** ツールバーアイコンと同じ「フォームの行」モチーフ */
+/** ツールバーアイコンと同じ画像（public/icons/） */
 export const LogoMark = ({ size = 16 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <rect x="7" y="5.5" width="10" height="2.6" rx="1.3" fill="currentColor" />
-    <rect x="7" y="10.7" width="7.5" height="2.6" rx="1.3" fill="currentColor" />
-    <rect x="7" y="15.9" width="4.5" height="2.6" rx="1.3" fill="currentColor" />
-  </svg>
+  <img src="/icons/icon48.png" width={size} height={size} alt="" aria-hidden="true" />
 );
 
 export const GearIcon = (p: IconProps) => (

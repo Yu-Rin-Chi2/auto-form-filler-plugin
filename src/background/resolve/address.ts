@@ -67,6 +67,56 @@ function isText(field: ExtractedField): boolean {
   return field.tag !== 'select' && !(field.tag === 'input' && field.type === 'radio');
 }
 
+/** ラベル・placeholder がその部分を受け持つと書いているか（「住所1（市区町村・番地）」「建物名・部屋番号」等） */
+const PART_MENTIONS: readonly RegExp[] = [
+  /都道府県/,
+  /市区町村|市区郡|市町村/,
+  /番地|丁目|町名|町域/,
+  /建物|マンション|ビル|アパート|部屋|号室/,
+];
+/** 「市区町村以降」「番地以下」のように、そこから最後まで受け持つと書いているか */
+const UNTIL_END_MENTION = /(都道府県|市区町村|市区郡|市町村|町名|町域|番地)\s*(以降|以下|から)/;
+
+function fieldText(field: ExtractedField): string {
+  return `${field.label} ${field.placeholder ?? ''}`;
+}
+
+function mentionsPart(field: ExtractedField, part: number): boolean {
+  return PART_MENTIONS[part]!.test(fieldText(field));
+}
+
+/** ラベルから読み取れる、その欄が受け持つ最後の部分。書かれていなければ -1 */
+function lastMentionedPart(field: ExtractedField): number {
+  if (UNTIL_END_MENTION.test(fieldText(field))) return LAST_PART;
+  for (let part = LAST_PART; part >= 0; part--) if (mentionsPart(field, part)) return part;
+  return -1;
+}
+
+/**
+ * 住所系の欄が 1 つだけのとき。既定では広げないが、ラベルに「市区町村以降」「市区町村・番地」
+ * 「番地・建物名」のように受け持つ範囲が書かれていれば、そこまで広げる
+ */
+function planSingle(member: Member, out: Map<string, AddressPlan>): void {
+  const { d, info } = member;
+  if (!isText(d.field)) return;
+  const text = fieldText(d.field);
+  let from: number;
+  let to: number;
+  if (info.part === null) {
+    // 一体型でも「市区町村以降」なら都道府県を入れない（都道府県が固定・別欄のフォーム）
+    const m = UNTIL_END_MENTION.exec(text);
+    if (!m || /都道府県/.test(m[1]!)) return;
+    from = PART_MENTIONS.findIndex((re) => re.test(m[1]!));
+    to = LAST_PART;
+  } else {
+    from = info.part;
+    to = Math.max(info.part, lastMentionedPart(d.field));
+  }
+  if (from < 0 || (info.part !== null && to === from)) return;
+  // 1 欄だけのときは確率の合計による確信度の救済はしない（前後の欄という裏付けがないため）
+  out.set(d.id, { script: info.script, from, to, own: info.part ?? from });
+}
+
 function sumAddressProbabilities(script: AddressScript, probabilities?: Record<string, number>): number | undefined {
   if (!probabilities) return undefined;
   const keys = [...PART_KEYS[script], FULL_KEY[script]];
@@ -79,8 +129,12 @@ interface Member {
 }
 
 function planGroup(members: Member[], out: Map<string, AddressPlan>): void {
-  // 1 欄だけなら広げない（「市区町村」だけを尋ねるフォーム等を壊さないため）
-  if (members.length < 2) return;
+  if (members.length === 0) return;
+  // 1 欄だけなら、ラベルに範囲が書かれているときだけ広げる（「市区町村」だけを尋ねるフォーム等を壊さないため）
+  if (members.length === 1) {
+    planSingle(members[0]!, out);
+    return;
+  }
   const script = members[0]!.info.script;
 
   // 各欄の位置。full は直前の欄の次から始まる
@@ -99,12 +153,17 @@ function planGroup(members: Member[], out: Map<string, AddressPlan>): void {
   const isFull = members.map((m) => m.info.part === null);
   const text = members.map((m) => isText(m.d.field));
 
-  // 間の抜けを埋める: 前が full なら前が、そうでなければ後ろのテキスト欄が、それも無理なら前のテキスト欄が受け持つ
+  // 間の抜けを埋める: 前が full なら前が、そうでなければ後ろのテキスト欄が、それも無理なら前のテキスト欄が受け持つ。
+  // ただし前の欄のラベルがその部分を受け持つと書いていれば（「住所1（市区町村・番地）」+「住所2（建物名）」）前が受け持つ
   for (let i = 1; i < members.length; i++) {
     const gapStart = pos[i - 1]! + 1;
     const gapEnd = pos[i]! - 1;
     if (gapStart > gapEnd) continue;
+    const prevField = members[i - 1]!.d.field;
+    const nextField = members[i]!.d.field;
+    const prevClaims = lastMentionedPart(prevField) >= gapEnd && !mentionsPart(nextField, gapStart);
     if (isFull[i - 1] && text[i - 1]) to[i - 1] = gapEnd;
+    else if (prevClaims && text[i - 1]) to[i - 1] = gapEnd;
     else if (text[i]) from[i] = gapStart;
     else if (text[i - 1]) to[i - 1] = gapEnd;
   }
@@ -116,6 +175,8 @@ function planGroup(members: Member[], out: Map<string, AddressPlan>): void {
   // 末尾: 番地以降の欄なら建物名まで受け持つ。市区町村で終わるフォーム（お住まいの地域のみ等）は広げない
   const last = members.length - 1;
   if (text[last] && (isFull[last] || pos[last]! >= LINE1_PART)) to[last] = LAST_PART;
+  // 市区町村で終わっていても、ラベルに「市区町村以降」「番地まで」等と書かれていればそこまで広げる
+  else if (text[last]) to[last] = Math.max(to[last]!, lastMentionedPart(members[last]!.d.field));
 
   members.forEach((m, i) => {
     out.set(m.d.id, {

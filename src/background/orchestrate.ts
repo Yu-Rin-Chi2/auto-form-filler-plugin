@@ -15,6 +15,7 @@ import type {
   ShowToastRequest,
 } from '../shared/types';
 import { JevError } from '../shared/types';
+import { normalizePageUrl } from '../shared/url';
 import { findPendingFrameOrigins, mergeFrameExtractions, splitAssignmentsByFrame, type FrameExtraction } from './frames';
 import { callJev, toCustomFieldPayload } from './jev/client';
 import { aggregateFillResult } from './resolve/aggregate';
@@ -119,9 +120,9 @@ function buildToastMessage(outcomes: FieldOutcome[], locale: ReturnType<typeof r
 }
 
 /** 実行開始直後に lastResult へ保存する「実行中」マーカー（要件 4.1、レビュー指摘 A-1） */
-function buildInProgressResult(profileId: string): FillResult {
+function buildInProgressResult(profileId: string, url: string): FillResult {
   return {
-    url: '',
+    url,
     profileId,
     at: new Date().toISOString(),
     filled: 0,
@@ -146,14 +147,15 @@ async function runFillInner(profileId: string): Promise<FillOutcome> {
     throw new JevError('unknown', 'プロフィールが見つかりません');
   }
 
+  const tab = await getActiveTab();
+  const tabId = tab.id as number;
+
   // 処理開始時点で「実行中」を lastResult に保存する。service worker がこの後アイドル終了等で
   // 途中で落ちても、ポップアップ再表示時に「前回の実行が完了しませんでした」と分かるようにする
   // （レビュー指摘 A-1）。以降のすべての経路（成功・失敗）でこの関数を抜けるまでに必ず
   // 上書きされるため、正常終了時にユーザーに見えることはない。
-  await saveLastResult(buildInProgressResult(profileId), []);
-
-  const tab = await getActiveTab();
-  const tabId = tab.id as number;
+  // ポップアップは同じページの結果だけを表示するため、ページの URL も入れておく
+  await saveLastResult(buildInProgressResult(profileId, tab.url ? normalizePageUrl(tab.url) : ''), []);
 
   // tab.url は activeTab の権限上、ユーザー操作（ツールバーアイコンのクリック等）を
   // 経由した場合のみ取得できる。chrome の公式ドキュメントでは commands API のショートカット
@@ -302,7 +304,8 @@ export async function runFill(profileId: string): Promise<FillOutcome> {
     let url = '';
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      url = tab?.url ?? '';
+      // 成功時と同じくクエリ・フラグメントは保存しない（要件 5.2）
+      url = tab?.url ? normalizePageUrl(tab.url) : '';
     } catch {
       // タブ情報が取れない場合は空文字のままにする
     }

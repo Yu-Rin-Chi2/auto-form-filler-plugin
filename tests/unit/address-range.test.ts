@@ -213,3 +213,60 @@ describe('住所の確信度判定', () => {
     expect(reasons[0]).toBe('skipped_low_confidence');
   });
 });
+
+describe('ラベルに書かれた受け持ち範囲', () => {
+  it('「住所1（市区町村・番地）」+「住所2（建物名）」は番地を住所1 に入れる', () => {
+    expect(
+      run([
+        [prefSelect(), sure('prefecture')],
+        [text('住所1（市区町村・番地）'), sure('city')],
+        [text('住所2（建物名・部屋番号）'), sure('address_line2')],
+      ]).values,
+    ).toEqual(['神奈川県', '横浜市西区みなとみらい1-1-1', 'ランドマークタワー10階']);
+  });
+
+  it('ラベルに書かれていなければ従来どおり後ろの欄が間を受け持つ', () => {
+    expect(
+      run([
+        [prefSelect(), sure('prefecture')],
+        [text('住所1'), sure('city')],
+        [text('住所2'), sure('address_line2')],
+      ]).values,
+    ).toEqual(['神奈川県', '横浜市西区', 'みなとみらい1-1-1 ランドマークタワー10階']);
+  });
+
+  it('1 欄の「住所（市区町村以降）」は市区町村〜建物名', () => {
+    expect(run([[text('住所（市区町村以降）'), sure('city')]]).values).toEqual([
+      '横浜市西区みなとみらい1-1-1 ランドマークタワー10階',
+    ]);
+  });
+
+  it('1 欄の「市区町村以降」は Jev が一体型と答えても都道府県を入れない', () => {
+    expect(run([[text('住所（市区町村以降）'), sure('address_full')]]).values).toEqual([
+      '横浜市西区みなとみらい1-1-1 ランドマークタワー10階',
+    ]);
+  });
+
+  it('1 欄の「市区町村・番地」は建物名まで広げない', () => {
+    expect(run([[text('市区町村・番地'), sure('city')]]).values).toEqual(['横浜市西区みなとみらい1-1-1']);
+  });
+
+  it('都道府県 + 「市区町村以降」の 2 欄は、2 つ目が建物名まで受け持つ', () => {
+    expect(
+      run([
+        [prefSelect(), sure('prefecture')],
+        [text('住所（市区町村以降）'), sure('city')],
+      ]).values,
+    ).toEqual(['神奈川県', '横浜市西区みなとみらい1-1-1 ランドマークタワー10階']);
+  });
+
+  it('1 欄で範囲を広げても、確率の合計による救済はしない', () => {
+    const { reasons } = run([
+      [
+        text('番地・建物名'),
+        { choice: 'address_line1', confidence: 0.4, probabilities: { address_line1: 0.4, address_line2: 0.35, none: 0.25 } },
+      ],
+    ]);
+    expect(reasons[0]).toBe('skipped_low_confidence');
+  });
+});

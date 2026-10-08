@@ -50,7 +50,7 @@ export const App = () => {
         <div className="topbar__inner">
           <h1 className="brand options-title">
             <span className="brand__mark">
-              <LogoMark size={18} />
+              <LogoMark size={26} />
             </span>
             {t('app.name')}
           </h1>

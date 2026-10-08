@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>アカウント作成 | SampleApp</title>
+  <style>.field { margin-bottom: 12px; } .field-label { font-weight: bold; }</style>
+</head>
+<body>
+<!--
+  バリエーション 05: React などの SPA を模したフォーム。
+  - フォームは読み込み後に JS で描画する
+  - ラベルは div（aria-labelledby で関連付け）
+  - 「制御されたコンポーネント」を再現: 各欄は内部 state を持ち、input イベントで state を更新する。
+    state が更新されないまま再描画されると値が state に戻る（React の value tracker と同じく、
+    インスタンス側の value setter 経由で入れた値は「変化なし」とみなして無視する）
+  - 生年月日は type=date、性別は select（value が M/F）
+-->
+<h1>アカウント作成</h1>
+<div id="root"></div>
+<script>
+  (function () {
+    var FIELDS = [
+      { id: 'rf-family', label: '姓', type: 'text', key: 'family_name', expect: '鈴木' },
+      { id: 'rf-given', label: '名', type: 'text', key: 'given_name', expect: '一郎' },
+      { id: 'rf-email', label: 'メールアドレス', type: 'email', key: 'email', expect: 'ichiro.suzuki.e2e@example.test' },
+      { id: 'rf-phone', label: '携帯電話番号', type: 'tel', key: 'phone', expect: '090-1234-5678' },
+      { id: 'rf-birth', label: '生年月日', type: 'date', key: 'birth_date', expect: '1990-01-31' },
+      { id: 'rf-nickname', label: 'ニックネーム（公開されます）', type: 'text', key: null, expect: '' },
+    ];
+    var state = {};
+    var root = document.getElementById('root');
+    var form = document.createElement('form');
+    form.setAttribute('onsubmit', 'return false');
+
+    // React の inputValueTracking 相当: インスタンス側に value のアクセサを定義し、
+    // 「最後に React が知っている値」を記録する。ネイティブ setter（prototype）経由の変更は記録されない。
+    function track(el) {
+      var proto = Object.getPrototypeOf(el);
+      var desc = Object.getOwnPropertyDescriptor(proto, 'value');
+      var tracked = el.value;
+      Object.defineProperty(el, 'value', {
+        configurable: true,
+        get: function () { return desc.get.call(this); },
+        set: function (v) { tracked = String(v); desc.set.call(this, v); },
+      });
+      el.__getTracked = function () { return tracked; };
+      el.__setTracked = function (v) { tracked = v; };
+    }
+
+    function rerender(el, id) {
+      // 再描画: state の値に戻す（state が更新されていなければ入力は消える）
+      var want = state[id] || '';
+      var proto = Object.getPrototypeOf(el);
+      var desc = Object.getOwnPropertyDescriptor(proto, 'value');
+      if (desc.get.call(el) !== want) {
+        desc.set.call(el, want);
+        el.__setTracked(want);
+      }
+    }
+
+    FIELDS.forEach(function (f) {
+      var wrap = document.createElement('div');
+      wrap.className = 'field';
+      var lab = document.createElement('div');
+      lab.className = 'field-label';
+      lab.id = f.id + '-label';
+      lab.textContent = f.label;
+      var input = document.createElement('input');
+      input.type = f.type;
+      input.id = f.id;
+      input.name = f.id.replace('rf-', '');
+      input.setAttribute('aria-labelledby', lab.id);
+      if (f.key) input.setAttribute('data-key', f.key);
+      input.setAttribute('data-expect', f.expect);
+      track(input);
+      input.addEventListener('input', function () {
+        var actual = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value').get.call(input);
+        if (actual !== input.__getTracked()) {
+          input.__setTracked(actual);
+          state[f.id] = actual;
+        }
+        setTimeout(function () { rerender(input, f.id); }, 0);
+      });
+      input.addEventListener('blur', function () { setTimeout(function () { rerender(input, f.id); }, 0); });
+      wrap.appendChild(lab);
+      wrap.appendChild(input);
+      form.appendChild(wrap);
+    });
+
+    // 性別 select（value が M/F）
+    var gWrap = document.createElement('div');
+    gWrap.className = 'field';
+    gWrap.innerHTML =
+      '<div class="field-label" id="rf-gender-label">性別</div>' +
+      '<select id="rf-gender" name="gender" aria-labelledby="rf-gender-label" data-key="gender" data-expect="M">' +
+      '<option value="">選択しない</option><option value="M">男性</option><option value="F">女性</option><option value="O">その他</option>' +
+      '</select>';
+    form.appendChild(gWrap);
+
+    var btn = document.createElement('button');
+    btn.type = 'submit';
+    btn.textContent = '登録する';
+    form.appendChild(btn);
+
+    setTimeout(function () { root.appendChild(form); }, 50);
+  })();
+</script>
+</body>
+</html>

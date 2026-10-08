@@ -42,13 +42,30 @@ test.describe('ポップアップの状態（要件 UI/UX 4章）', () => {
     await expect(popup.locator('#profile-select')).toContainText(profile.name);
   });
 
-  test('E2E-POPUP-06: 直近結果が保存されていれば、開いた時点で表示される', async ({ context, extensionId }) => {
+});
+
+test.describe('ポップアップ: 直近結果の表示（E2E-POPUP-06）', () => {
+  let server: MockServer;
+
+  test.beforeAll(async () => {
+    server = await startMockServer();
+  });
+
+  test.afterAll(async () => {
+    await server.close();
+  });
+
+  const seedLastResult = async (
+    context: Parameters<typeof seedStorage>[0],
+    extensionId: string,
+    url: string,
+  ): Promise<void> => {
     const profile = buildTestProfile();
     await seedStorage(context, extensionId, {
       profiles: [profile],
       settings: buildTestSettings(),
       lastResult: {
-        url: 'https://shop.example.jp/signup',
+        url,
         profileId: profile.id,
         at: new Date().toISOString(),
         filled: 5,
@@ -61,12 +78,37 @@ test.describe('ポップアップの状態（要件 UI/UX 4章）', () => {
       },
       lastResultDetail: [],
     });
-    const popup = await context.newPage();
-    await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  };
 
-    await expect(popup.getByText('5件入力しました')).toBeVisible();
-    await expect(popup.getByText(/shop\.example\.jp/)).toBeVisible();
-    await expect(popup.getByText(/たった今/)).toBeVisible();
+  /** フォームのタブをアクティブにした状態でポップアップを読み込み直す（ポップアップは開いた時点のタブを見るため） */
+  const openPopupOn = async (context: Parameters<typeof seedStorage>[0], extensionId: string, formUrl: string) => {
+    const { formPage, popupPage } = await openFormAndPopup(context, extensionId, formUrl);
+    await popupPage.reload();
+    return { formPage, popupPage };
+  };
+
+  test('E2E-POPUP-06a: 同じページで開くと、直近結果が表示される', async ({ context, extensionId }) => {
+    const formUrl = `${server.url}/ec-signup.html`;
+    await seedLastResult(context, extensionId, formUrl);
+    const { formPage, popupPage } = await openPopupOn(context, extensionId, `${formUrl}?ref=e2e`);
+
+    await expect(popupPage.getByText('5件入力しました')).toBeVisible();
+    await expect(popupPage.getByText(/たった今/)).toBeVisible();
+
+    await formPage.close();
+    await popupPage.close();
+  });
+
+  test('E2E-POPUP-06b: 別のページで開くと、前のページの結果は表示されない', async ({ context, extensionId }) => {
+    await seedLastResult(context, extensionId, 'https://shop.example.jp/signup');
+    const { formPage, popupPage } = await openPopupOn(context, extensionId, `${server.url}/ec-signup.html`);
+
+    await expect(popupPage.getByRole('button', { name: 'このページに入力' })).toBeEnabled();
+    await expect(popupPage.getByText('5件入力しました')).toHaveCount(0);
+    await expect(popupPage.getByText(/shop\.example\.jp/)).toHaveCount(0);
+
+    await formPage.close();
+    await popupPage.close();
   });
 });
 

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ご宿泊予約 | サンプルホテル</title>
+</head>
+<body>
+<!--
+  バリエーション 09: 宿泊予約。ローマ字の姓・名と、宿泊者情報以外の欄（日付・人数・時刻・要望）の混在。
+  - 予約者氏名（ローマ字）は姓・名に分割
+  - チェックイン日・人数・到着予定時刻・ご要望は触らない
+  - 電話番号の国番号 select は触らない
+-->
+<h1>ご宿泊予約</h1>
+<form action="#" onsubmit="return false">
+  <fieldset>
+    <legend>ご宿泊内容</legend>
+    <label>チェックイン日 <input type="date" name="checkin" id="checkin" data-expect=""></label>
+    <label>泊数
+      <select name="nights" id="nights" data-expect="1"><option value="1">1泊</option><option value="2">2泊</option></select></label>
+    <label>ご利用人数
+      <select name="guests" id="guests" data-expect="2"><option value="1">1名</option><option value="2" selected>2名</option></select></label>
+  </fieldset>
+  <fieldset>
+    <legend>ご予約者情報</legend>
+    <label>氏名 姓（ローマ字） <input type="text" name="lastNameEn" id="lastNameEn" placeholder="YAMADA" data-key="family_name_romaji" data-expect="SUZUKI"></label>
+    <label>氏名 名（ローマ字） <input type="text" name="firstNameEn" id="firstNameEn" placeholder="TARO" data-key="given_name_romaji" data-expect="ICHIRO"></label>
+    <label>氏名（漢字） <input type="text" name="nameJa" id="nameJa" placeholder="山田　太郎" data-key="full_name" data-expect="鈴木　一郎"></label>
+    <label>国番号
+      <select name="countryCode" id="countryCode" data-expect="+81"><option value="+81">+81 日本</option><option value="+1">+1 USA</option></select></label>
+    <label>電話番号 <input type="tel" name="tel" id="tel" data-key="phone" data-expect="090-1234-5678"></label>
+    <label>メールアドレス <input type="email" name="mail" id="mail" data-key="email" data-expect="ichiro.suzuki.e2e@example.test"></label>
+  </fieldset>
+  <fieldset>
+    <legend>その他</legend>
+    <label>到着予定時刻
+      <select name="arrival" id="arrival" data-expect=""><option value="">選択してください</option><option>15:00</option><option>16:00</option></select></label>
+    <label>ご要望 <textarea name="request" id="request" data-expect=""></textarea></label>
+  </fieldset>
+  <button type="submit">予約内容の確認</button>
+</form>
+</body>
+</html>

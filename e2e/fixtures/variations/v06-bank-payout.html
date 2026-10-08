@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>振込先口座の登録 | サンプルマーケット</title>
+</head>
+<body>
+<!--
+  バリエーション 06: 売上の振込先口座の登録フォーム。
+  - 銀行名・金融機関コード・支店名・支店コード・口座種別（radio）・口座番号・口座名義（カナ）
+  - 口座名義は全角カナ指定（姓と名の間は全角スペースの placeholder）
+-->
+<h1>振込先口座の登録</h1>
+<form action="#" onsubmit="return false">
+  <p>売上金の振込先となる口座を登録してください。</p>
+  <div>
+    <label for="bank_nm">金融機関名</label>
+    <input type="text" id="bank_nm" name="bank_name" placeholder="例：みずほ銀行" data-key="bank_name" data-expect="テスト銀行">
+  </div>
+  <div>
+    <label for="bank_cd">金融機関コード（4桁）</label>
+    <input type="text" id="bank_cd" name="bank_code" maxlength="4" data-key="bank_code" data-expect="0001">
+  </div>
+  <div>
+    <label for="branch_nm">支店名</label>
+    <input type="text" id="branch_nm" name="branch_name" placeholder="例：東京営業部" data-key="branch_name" data-expect="本店">
+  </div>
+  <div>
+    <label for="branch_cd">支店コード（3桁）</label>
+    <input type="text" id="branch_cd" name="branch_code" maxlength="3" data-key="branch_code" data-expect="100">
+  </div>
+  <div>
+    <span>口座種別</span>
+    <label><input type="radio" id="acct_type_1" name="account_type" value="1" data-key="account_type" data-expect-checked="true">普通</label>
+    <label><input type="radio" id="acct_type_2" name="account_type" value="2" data-expect-checked="false">当座</label>
+  </div>
+  <div>
+    <label for="acct_no">口座番号（7桁）</label>
+    <input type="text" id="acct_no" name="account_number" maxlength="7" data-key="account_number" data-expect="1234567">
+  </div>
+  <div>
+    <label for="acct_holder">口座名義（全角カナ）</label>
+    <input type="text" id="acct_holder" name="account_holder" placeholder="例：ヤマダ　タロウ" data-key="account_holder_kana" data-expect="スズキ　イチロウ">
+  </div>
+  <button type="submit">登録する</button>
+</form>
+</body>
+</html>

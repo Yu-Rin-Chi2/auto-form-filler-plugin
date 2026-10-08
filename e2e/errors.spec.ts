@@ -1,5 +1,5 @@
 import { FORMS } from '../poc/fixtures/forms';
-import { buildChoiceAnswer, buildTestProfile, buildTestSettings } from './fixtures-data';
+import { buildChoiceAnswer, buildSuccessHandler, buildTestProfile, buildTestSettings } from './fixtures-data';
 import { clickRunButton, expect, openFormAndPopup, seedStorage, test } from './extension-fixture';
 import { startMockServer } from './mock-server';
 import type { MockServer } from './mock-server';
@@ -106,15 +106,15 @@ test.describe('エラーハンドリング（要件 5.5）', () => {
     await popupPage.close();
   });
 
-  test('E2E-ERROR-05: 11秒応答がない場合はタイムアウトとして「接続できません」系のメッセージになる', async ({
+  test('E2E-ERROR-05: 46秒応答がない場合はタイムアウトとして「接続できません」系のメッセージになる', async ({
     context,
     extensionId,
   }) => {
-    test.setTimeout(30_000);
-    // クライアント側は 10 秒でタイムアウトする。モック側は 11 秒後に応答することで、
+    test.setTimeout(75_000);
+    // クライアント側は 45 秒でタイムアウトする。モック側は 46 秒後に応答することで、
     // ソケットを正常に閉じつつ「クライアントが先にあきらめる」状況を再現する。
     server.setJevHandler(async () => {
-      await new Promise((r) => setTimeout(r, 11_000));
+      await new Promise((r) => setTimeout(r, 46_000));
       return { status: 200, body: { answers: {} } };
     });
     const profile = buildTestProfile();
@@ -125,7 +125,34 @@ test.describe('エラーハンドリング（要件 5.5）', () => {
 
     const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
     await clickRunButton(popupPage, 'このページに入力');
-    await expect(popupPage.getByText(/タイムアウト|接続できません/)).toBeVisible({ timeout: 20_000 });
+    // 5 秒を過ぎると「準備に時間がかかることがある」と案内する
+    await expect(popupPage.getByText(/30 秒ほどかかることがあります/)).toBeVisible({ timeout: 10_000 });
+    await expect(popupPage.getByText(/タイムアウト|接続できません/)).toBeVisible({ timeout: 55_000 });
+
+    await formPage.close();
+    await popupPage.close();
+  });
+
+  test('E2E-ERROR-05b: 応答に 15 秒かかっても（中継先の立ち上がり待ち）タイムアウトせず入力できる', async ({
+    context,
+    extensionId,
+  }) => {
+    test.setTimeout(45_000);
+    const success = buildSuccessHandler(EC_SIGNUP);
+    server.setJevHandler(async (body, req) => {
+      await new Promise((r) => setTimeout(r, 15_000));
+      return success(body, req);
+    });
+    const profile = buildTestProfile();
+    await seedStorage(context, extensionId, {
+      profiles: [profile],
+      settings: buildTestSettings({ workerEndpoint: server.jevUrl }),
+    });
+
+    const { formPage, popupPage } = await openFormAndPopup(context, extensionId, `${server.url}/ec-signup.html`);
+    await clickRunButton(popupPage, 'このページに入力');
+    await expect(popupPage.getByText(/件入力しました/)).toBeVisible({ timeout: 30_000 });
+    await expect(formPage.locator('input[name="last_name"]')).toHaveValue('鈴木');
 
     await formPage.close();
     await popupPage.close();

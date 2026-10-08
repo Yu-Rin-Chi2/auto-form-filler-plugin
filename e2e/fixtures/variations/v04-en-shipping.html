@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shipping details | Global Store</title>
+</head>
+<body>
+<!--
+  バリエーション 04: 海外 EC の英語フォーム（autocomplete 属性なし、ラベルは label for）。
+  - Full name 1 欄（英語フォームなのでローマ字・名→姓）
+  - Country select（Japan を選ぶ）
+  - State / Province は text、ZIP は 1 欄
+  - Address line 1 / 2 の 2 欄
+-->
+<h1>Shipping details</h1>
+<form action="#" onsubmit="return false">
+  <fieldset>
+    <legend>Contact</legend>
+    <label for="c_name">Full name (as shown on your passport)</label>
+    <input type="text" id="c_name" name="customer_name" data-key="full_name_romaji" data-expect="ICHIRO SUZUKI">
+    <label for="c_email">Email address</label>
+    <input type="email" id="c_email" name="customer_email" data-key="email" data-expect="ichiro.suzuki.e2e@example.test">
+    <label for="c_phone">Phone number</label>
+    <input type="tel" id="c_phone" name="customer_phone" data-key="phone" data-expect="090-1234-5678">
+  </fieldset>
+  <fieldset>
+    <legend>Shipping address</legend>
+    <label for="s_country">Country</label>
+    <select id="s_country" name="ship_country" data-key="country" data-expect="JP">
+      <option value="">Select a country</option>
+      <option value="US">United States</option>
+      <option value="CA">Canada</option>
+      <option value="JP">Japan</option>
+      <option value="GB">United Kingdom</option>
+    </select>
+    <label for="s_line1">Address line 1</label>
+    <input type="text" id="s_line1" name="ship_line1" data-key="address_line1" data-expect-any="千代田9-9-9|千代田区千代田9-9-9">
+    <label for="s_line2">Address line 2 (optional)</label>
+    <input type="text" id="s_line2" name="ship_line2" data-key="address_line2" data-expect="イーツーイータワー505">
+    <label for="s_city">City</label>
+    <input type="text" id="s_city" name="ship_city" data-key="city" data-expect="千代田区">
+    <label for="s_state">State / Province / Region</label>
+    <input type="text" id="s_state" name="ship_state" data-key="prefecture" data-expect="東京都">
+    <label for="s_zip">ZIP / Postal code</label>
+    <input type="text" id="s_zip" name="ship_zip" data-key="postal_code" data-expect="100-0001">
+  </fieldset>
+  <fieldset>
+    <legend>Delivery</legend>
+    <label for="d_note">Delivery instructions</label>
+    <textarea id="d_note" name="delivery_note" data-expect=""></textarea>
+    <label><input type="checkbox" id="d_gift" name="gift" data-expect-checked="false"> This is a gift</label>
+  </fieldset>
+  <button type="submit">Continue to payment</button>
+</form>
+</body>
+</html>

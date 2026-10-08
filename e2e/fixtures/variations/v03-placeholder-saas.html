@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>無料トライアルのお申し込み | SampleCloud</title>
+  <style>
+    .row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .hp { position: absolute; left: -9999px; }
+  </style>
+</head>
+<body>
+<!--
+  バリエーション 03: SaaS の資料請求・トライアル申込に多い、ラベルなし（placeholder / aria-label のみ）のフォーム。
+  - 名前が意味を持たない name（input_1 等）
+  - 役職・従業員数・きっかけ（select）は触らない
+  - スパム対策の honeypot（画面外に飛ばした input、display:none の input）には入れない
+-->
+<h1>14 日間の無料トライアル</h1>
+<form action="#" onsubmit="return false">
+  <div class="row">
+    <input type="text" name="input_1" id="input_1" placeholder="姓" aria-label="姓" data-key="family_name" data-expect="鈴木">
+    <input type="text" name="input_2" id="input_2" placeholder="名" aria-label="名" data-key="given_name" data-expect="一郎">
+  </div>
+  <div class="row">
+    <input type="text" name="input_3" id="input_3" placeholder="会社名" data-key="company" data-expect="イーツーイー株式会社">
+  </div>
+  <div class="row">
+    <input type="text" name="input_4" id="input_4" placeholder="部署名" data-key="department" data-expect="検証部">
+    <input type="text" name="input_5" id="input_5" placeholder="役職" data-expect="">
+  </div>
+  <div class="row">
+    <input type="email" name="input_6" id="input_6" placeholder="会社のメールアドレス" data-key="email" data-expect="ichiro.suzuki.e2e@example.test">
+  </div>
+  <div class="row">
+    <input type="tel" name="input_7" id="input_7" placeholder="電話番号（ハイフンなし）" data-key="phone" data-expect="09012345678">
+  </div>
+  <div class="row">
+    <select name="input_8" id="input_8" aria-label="従業員数" data-expect="">
+      <option value="">従業員数</option>
+      <option>1〜10名</option><option>11〜50名</option><option>51〜300名</option><option>301名以上</option>
+    </select>
+  </div>
+  <div class="row">
+    <select name="input_9" id="input_9" aria-label="当サービスを知ったきっかけ" data-expect="">
+      <option value="">当サービスを知ったきっかけ</option>
+      <option>検索エンジン</option><option>SNS</option><option>知人の紹介</option>
+    </select>
+  </div>
+  <!-- honeypot（ボット対策。人間には見えない） -->
+  <div class="hp" aria-hidden="true">
+    <input type="text" name="url_hp" id="url_hp" tabindex="-1" autocomplete="off" data-expect="">
+  </div>
+  <input type="text" name="fax_hp" id="fax_hp" style="display:none" data-expect="">
+  <button type="submit">無料で試す</button>
+</form>
+</body>
+</html>

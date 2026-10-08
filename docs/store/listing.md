@@ -3,8 +3,11 @@
 デベロッパー ダッシュボードの各タブにそのまま貼り付けるための文言集。提出物（zip）は `npm run package` で `release/auto-form-filler-v<version>.zip` に生成する。
 
 - スクリーンショット: `npm run store-screenshots` → `docs/store/screenshots/*.png`（1280×800）
-- プロモタイル: `npm run render-promo` → `docs/store/promo/small-tile-440x280.png`
+- プロモ画像: `npm run render-promo` → `docs/store/promo/small-tile-440x280.png`（小タイル）, `docs/store/promo/marquee-1400x560.png`（マーキー）。背景イラストは `docs/store/art/hero-source.png`（Codex の image_gen で生成）
+- アイコン: `npm run render-icons` → `public/icons/icon{16,32,48,128}.png`（元画像は `docs/store/art/icon-source.png`。Codex の image_gen で生成）
 - ストアアイコン: `public/icons/icon128.png`
+
+2026-09-28: v0.3.0 で Jev の呼び出しを中継サーバー（Cloudflare Workers）経由に変えたことに合わせて全面的に書き直した。以前の版にあった「開発者のサーバーは存在しない」「API キーを設定する（BYOK）」「和暦にも対応」は現在の実装と食い違うため削除している。掲載文・プライバシー欄は実装と PRIVACY.md に一致させること（食い違いは審査での差し戻し理由になる）。
 
 ---
 
@@ -12,7 +15,8 @@
 
 ### 名前（manifest から自動）
 
-Auto Form Filler
+- ja: フォーム入力・瞬
+- en: Form Fill: Instant
 
 ### 概要（manifest `description` から自動・132 文字以内）
 
@@ -22,86 +26,88 @@ Auto Form Filler
 ### 詳細な説明（日本語）
 
 ```
-Auto Form Filler は、氏名・フリガナ・住所・電話番号・メールアドレス・生年月日などを、Web フォームにワンクリックで入力する Chrome 拡張です。フォームの各項目が「何を入力する欄か」の判定に、判定特化の AI モデル Jev（TypeSafe AI）を使います。
+フォーム入力・瞬は、氏名・フリガナ・住所・電話番号・メールアドレス・生年月日などを、Web フォームにワンクリックで入力する Chrome 拡張です。フォームの各項目が「何を入力する欄か」の判定に、判定特化の AI モデル Jev（TypeSafe AI）を使います。
+
+無料で、API キーなどの設定も不要です。インストールしてプロフィールを登録すれば、すぐに使えます。
 
 ■ 個人情報は端末の外に出しません
-プロフィールの値（氏名・住所・電話番号など）は、この端末の Chrome 内（chrome.storage.local）にのみ保存されます。Google アカウント経由の同期（chrome.storage.sync）は使いません。開発者のサーバーは存在せず、テレメトリも入っていません。
+プロフィールの値（氏名・住所・電話番号など）は、この端末の Chrome 内（chrome.storage.local）にのみ保存されます。Google アカウント経由の同期（chrome.storage.sync）は使いません。テレメトリ・アクセス解析も入っていません。
 
-AI に送るのは「フォーム項目のメタデータ」（ラベル・name 属性・type・placeholder など）と「プロフィールの項目名」（例: 姓、メールアドレス）だけです。値そのものは送信しません。何を送っているかは設定画面の「プライバシー」タブで確認でき、デバッグ設定を有効にすると実際のリクエスト JSON をコンソールで検証できます。
+項目の判定のために送るのは、フォーム項目のメタデータ（ラベル・name 属性・type・placeholder など）、ページの URL（クエリを除く）とタイトル、プロフィールの「項目名」（例: 姓、メールアドレス）だけです。値そのものは送信しません。送信先は開発者が運用する中継サーバー（Cloudflare Workers）で、そこから Jev を呼び出します。中継サーバーはリクエストの内容を記録しません。何を送っているかは設定画面の「プライバシー」タブで確認できます。
 
 ■ 登録できる項目
 氏名・フリガナ・ローマ字、メール、電話、住所と住所のカナ、会社名・部署・ホームページ URL、生年月日・性別、SNS アカウント（X・YouTube・Instagram・Facebook・TikTok・GitHub・LinkedIn・note）、銀行口座（振込先登録用）。固定の項目にないものは「カスタム項目」として自分で追加できます。
 
-■ 日本語フォーム特有の分割入力に対応
-・電話番号の 3 分割（090 / 1234 / 5678）
-・郵便番号の 2 分割（100 / 0001）
-・生年月日の年・月・日 3 つの select（和暦にも対応）
-・姓・名、セイ・メイ、ローマ字の分割
+■ 日本語フォーム特有の書き方に対応
+・電話番号の 3 分割（090 / 1234 / 5678）、郵便番号の 2 分割（100 / 0001）
+・「ハイフンなし」と書かれた欄ではハイフンを除いて入力
+・生年月日の年・月・日 3 つの select
+・姓・名、セイ・メイ、ローマ字の分割。「ふりがな」欄はひらがなで入力
 ・都道府県 select の表記ゆれ吸収（「東京」⇄「東京都」）
+・住所欄の分け方（1 欄 / 都道府県 + 1 欄 / 住所1 + 住所2 / 4 分割など）に合わせて各欄に入れる範囲を調整
 
 ■ 使い方
-1. オプションページの「API 設定」で Jev の API キーを設定（BYOK 方式。OpenRouter または TypeSafe で取得）
-2. 「プロフィール」で氏名・住所などを登録（個人用・会社用など複数作成可）
-3. 入力したいフォームのページでツールバーのアイコンをクリックし「このページに入力」
+1. 設定画面の「プロフィール」で氏名・住所などを登録（個人用・会社用など複数作成可）
+2. 入力したいフォームのページでツールバーのアイコンをクリックし「このページに入力」
    キーボードショートカット（既定 Alt+Shift+F）でも実行できます
+3. 入力された欄は枠線で示されます。内容を確認してから、ご自身で送信してください
 
 ■ しないこと
 ・フォームを自動送信しません（送信ボタンは押しません）
 ・パスワード・クレジットカード・暗証番号の欄は読み取りも入力もしません
 ・ページを開いただけでは動作しません。ボタンまたはショートカットで明示的に実行したときだけ動きます
 ・すでに入力済みの欄は既定では上書きしません
+・判定に自信がない欄は空欄のまま残します
 
 ■ 別サイトの枠（iframe）内のフォーム
 決済代行サービスなど、フォームが別サイトの枠内にあるページでは、初回に「許可して再実行」が表示されます。許可したサイトの枠内でのみ入力し、許可は設定からいつでも取り消せます。
 
-■ API キーについて
-この拡張は AI の呼び出しに利用者自身の API キーを使う BYOK（Bring Your Own Key）方式です。OpenRouter（https://openrouter.ai/）で発行したキーが利用できます。1 フォームあたりの利用料は概算 0.03 円程度です。キーはこの端末にのみ保存され、AI の呼び出し以外には使いません。
-
 ■ オープンソース
-ソースコードは MIT ライセンスで公開しています。プライバシーポリシーと送信内容の仕様もリポジトリで確認できます。
+ソースコード（拡張と中継サーバーの両方）は MIT ライセンスで公開しています。プライバシーポリシーと送信内容の仕様もリポジトリで確認できます。
 https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin
 ```
 
 ### 詳細な説明（English）
 
 ```
-Auto Form Filler fills web forms with your name, furigana, address, phone number, email, date of birth and more in one click. It uses Jev (TypeSafe AI), a model specialized in classification, to decide what each form field is asking for.
+Form Fill: Instant fills web forms with your name, furigana, address, phone number, email, date of birth and more in one click. It uses Jev (TypeSafe AI), a model specialized in classification, to decide what each form field is asking for.
+
+It is free and needs no API key or other setup. Install it, create a profile, and you are ready to go.
 
 ■ Your personal data never leaves your device
-Profile values (name, address, phone number, etc.) are stored only in this device's Chrome (chrome.storage.local). Sync via your Google account (chrome.storage.sync) is not used. There is no developer server and no telemetry.
+Profile values (name, address, phone number, etc.) are stored only in this device's Chrome (chrome.storage.local). Sync via your Google account (chrome.storage.sync) is not used. There is no telemetry or analytics.
 
-Only form field metadata (label, name attribute, type, placeholder, etc.) and the profile field *names* (e.g. "family_name", "email") are sent to the AI. The values themselves are never sent. The "Privacy" tab in the options page shows exactly what is sent, and a debug setting lets you inspect the actual request JSON in the console.
+To identify the fields, the extension sends only form field metadata (label, name attribute, type, placeholder, etc.), the page URL (without the query string) and title, and the profile field *names* (e.g. "family_name", "email"). The values themselves are never sent. The data goes to a relay server run by the developer (Cloudflare Workers), which calls Jev. The relay server does not record request contents. The "Privacy" tab in the options page shows exactly what is sent.
 
 ■ What you can store
 Name, furigana and romaji, email, phone, address and its katakana reading, company / department / website, date of birth and gender, social accounts (X, YouTube, Instagram, Facebook, TikTok, GitHub, LinkedIn, note) and bank account details (for payout forms). Anything else can be added as a custom field.
 
 ■ Built for Japanese forms
-- Phone numbers split into 3 inputs (090 / 1234 / 5678)
-- Postal codes split into 2 inputs (100 / 0001)
-- Date of birth as three selects (year / month / day, including Japanese era years)
-- Separate family / given name, katakana and romaji fields
+- Phone numbers split into 3 inputs (090 / 1234 / 5678) and postal codes split into 2 inputs (100 / 0001)
+- Removes hyphens where the form asks for digits only
+- Date of birth as three selects (year / month / day)
+- Separate family / given name, katakana and romaji fields; hiragana where the form asks for it
 - Prefecture select variations ("東京" vs "東京都")
+- Adapts to how the address is split (one field, prefecture + one field, address 1 + address 2, four fields, etc.)
 
 ■ How to use
-1. Set your Jev API key in Options → "API" (BYOK; get a key from OpenRouter or TypeSafe)
-2. Create a profile in Options → "Profiles" (you can keep several, e.g. personal and work)
-3. On a page with a form, click the toolbar icon and press "Fill this page"
+1. Create a profile in Options → "Profiles" (you can keep several, e.g. personal and work)
+2. On a page with a form, click the toolbar icon and press "Fill this page"
    The keyboard shortcut (default Alt+Shift+F) also works
+3. Filled fields are outlined. Review them and submit the form yourself
 
 ■ What it does NOT do
 - It never submits forms
 - It never reads or fills password, credit card or PIN fields
 - It does nothing until you explicitly run it from the popup or shortcut
 - Fields that already have a value are not overwritten by default
+- Fields it is not confident about are left empty
 
 ■ Forms inside iframes from other sites
 On pages where the form lives inside an iframe from another site (common with payment providers), the popup shows "Allow and run again" the first time. The extension fills forms only inside iframes from sites you allowed, and you can revoke them from the settings page at any time.
 
-■ About the API key
-This extension is BYOK (Bring Your Own Key). A key from OpenRouter (https://openrouter.ai/) works out of the box. A typical form costs well under one cent. The key is stored only on this device and is used for nothing but calling the AI.
-
 ■ Open source
-Source code is published under the MIT License, together with the privacy policy and the exact request specification.
+Source code (both the extension and the relay server) is published under the MIT License, together with the privacy policy and the exact request specification.
 https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin
 ```
 
@@ -123,7 +129,7 @@ https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin
 | スクリーンショット 3 | 1280×800 | `docs/store/screenshots/03-options-privacy.png` — 送信内容の明示 |
 | スクリーンショット 4 | 1280×800 | `docs/store/screenshots/04-popup-before.png` — 実行前のポップアップ |
 | 小プロモタイル | 440×280 | `docs/store/promo/small-tile-440x280.png` |
-| マーキー（任意） | 1400×560 | 省略 |
+| マーキー（任意） | 1400×560 | `docs/store/promo/marquee-1400x560.png` |
 
 ### URL
 
@@ -172,21 +178,21 @@ Used to inject, at the time of the action above, the content script that extract
 **storage**
 
 ```
-プロフィール（氏名・住所など）、API キー、動作設定をこの端末の chrome.storage.local に保存するために使用します。chrome.storage.sync は使用しません。
+プロフィール（氏名・住所など）と動作設定を、この端末の chrome.storage.local に保存するために使用します。chrome.storage.sync は使用しません。
 ```
 
 ```
-Used to keep profiles (name, address, etc.), the API key and settings in chrome.storage.local on this device. chrome.storage.sync is not used.
+Used to keep profiles (name, address, etc.) and settings in chrome.storage.local on this device. chrome.storage.sync is not used.
 ```
 
-**ホスト権限（https://api.typesafe.ai/*, https://openrouter.ai/*）**
+**ホスト権限（https://formfill.yrctool.stream/*）**
 
 ```
-フォーム項目の判定に使う Jev API を Service Worker から呼び出すために必要です。送信するのはフォーム項目のメタデータ（ラベル・name・type など）とプロフィールの「項目名」のみで、プロフィールの値は送信しません。利用者はどちらのプロバイダを使うかを設定で選択します。
+フォーム項目の判定に使う Jev（TypeSafe AI）を呼び出すための、開発者が運用する中継サーバー（Cloudflare Workers）です。Service Worker からこのホストにのみ送信します。送信するのはフォーム項目のメタデータ（ラベル・name・type など）、ページの URL（クエリを除く）とタイトル、プロフィールの「項目名」のみで、プロフィールの値は送信しません。中継サーバーはリクエストの内容を記録せず、そのソースコードもリポジトリの workers/ で公開しています。
 ```
 
 ```
-Required to call the Jev API (used to classify form fields) from the service worker. Only form field metadata (label, name, type, etc.) and profile field *names* are sent; profile values are never sent. The user chooses which provider to use in the settings.
+This is the relay server (Cloudflare Workers) run by the developer to call Jev (TypeSafe AI), which classifies form fields. The service worker sends requests only to this host. It sends only form field metadata (label, name, type, etc.), the page URL (without query) and title, and profile field *names*; profile values are never sent. The relay server does not record request contents, and its source code is public in the repository under workers/.
 ```
 
 **オプションのホスト権限（`https://*/*`, `http://*/*`）**
@@ -201,7 +207,7 @@ Disabled by default. Only when the form lives inside an iframe from another site
 
 ### リモートコード
 
-「いいえ、リモートコードを使用していません」を選択。すべてのコードは zip に同梱され、`eval` / 外部スクリプトの読み込みは行わない。
+「いいえ、リモートコードを使用していません」を選択。すべてのコードは zip に同梱され、`eval` / 外部スクリプトの読み込みは行わない。中継サーバーから受け取るのは判定結果の JSON（どの欄がどの項目か）だけで、コードは受け取らない。
 
 ### データの使用
 
@@ -214,12 +220,12 @@ Disabled by default. Only when the form lives inside an iframe from another site
 | 個人を特定できる情報 | **チェックする** | 氏名・住所・連絡先を端末内に保存して使用する（外部送信はしない。プライバシーポリシーに明記） |
 | 健康情報 | しない | |
 | 財務および支払い情報 | **チェックする** | 銀行口座（銀行名・支店・口座番号）を端末内に保存して使用する（外部送信はしない）。カード情報は扱わない |
-| 認証情報 | しない | パスワード・暗証番号は扱わない。API キーは利用者自身のもので端末内保存 |
+| 認証情報 | しない | パスワード・暗証番号は扱わない。API キーも持たない |
 | 個人的なコミュニケーション | しない | |
 | 位置情報 | しない | |
 | ウェブ履歴 | しない | |
 | ユーザー アクティビティ | しない | |
-| **ウェブサイトのコンテンツ** | **チェックする** | 実行時にフォーム項目のメタデータ（ラベル・name 等）とページ URL・タイトルを Jev API に送るため |
+| **ウェブサイトのコンテンツ** | **チェックする** | 実行時にフォーム項目のメタデータ（ラベル・name 等）とページ URL・タイトルを中継サーバー経由で Jev に送るため |
 
 3 つの証明（すべてチェック）:
 
@@ -249,32 +255,36 @@ https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin/blob/main/PRIVACY.md
 
 ```
 [English]
-This extension is BYOK (Bring Your Own Key): it calls the Jev API (TypeSafe AI) with an API key supplied by the user, and does nothing until a key is set.
+No account, API key or other setup is required. The extension calls Jev (TypeSafe AI) through a relay server run by the developer (https://formfill.yrctool.stream, source in the repository under workers/).
 
 To test:
-1. Open the options page (opens automatically on first install) → "API" tab.
-2. Provider: "OpenRouter". Paste an OpenRouter API key (https://openrouter.ai/keys). [任意: 審査用のキーをここに記載する場合 → "Test key: sk-or-v1-...  (limited credit, will be revoked after review)"]
-3. "Profiles" tab → create a profile with any sample values.
-4. Open any page with a sign-up / contact form (the repository's e2e/fixtures/*.html files are sample forms you can open locally), click the toolbar icon → "Fill this page".
+1. After installing, the options page opens on the "Profiles" tab. Create a profile with any sample values (e.g. name, katakana reading, email, phone, postal code, prefecture, address) and click "Save".
+2. Open any page with a sign-up, contact or checkout form. Sample forms are in the repository: e2e/fixtures/variations/*.html (download one and open it, or serve it locally).
+3. Click the toolbar icon → "Fill this page" (or press Alt+Shift+F). The filled fields are outlined and the popup shows how many fields were filled.
+   Note: if the relay has not been used for a while, the first request can take up to about 30 seconds while the model warms up. The popup shows a message when this happens; later requests take about one second.
 
 Privacy notes for review:
-- Profile values are stored only in chrome.storage.local and are never sent anywhere, including to the Jev API. Only field metadata (label, name, type, placeholder, options) and profile field names are sent. The exact request format is documented in PRIVACY.md and docs/requirements/01-functional-requirements.md (section 5.2) in the public repository.
+- Profile values are stored only in chrome.storage.local and are never sent anywhere, including to the relay server and Jev. Only field metadata (label, name, type, placeholder, options), the page URL without query and title, and profile field names are sent. The exact request format is documented in PRIVACY.md and docs/requirements/01-functional-requirements.md (section 5.2) in the public repository.
+- The relay server does not log request bodies; its source is public (workers/).
 - The extension never submits forms and excludes password / credit-card fields at extraction time.
 - No remote code, no telemetry, no chrome.storage.sync.
 - Source: https://github.com/Yu-Rin-Chi2/auto-form-filler-plugin (MIT)
-```
 
-審査用キーを添えるかどうかは提出時に判断する。添える場合は **審査専用に発行した、残高を少額（$1 程度）に限定したキー**を使い、公開後に必ず失効させる。添えない場合、審査者が動作確認できず「機能が確認できない」で差し戻される可能性があるため、その際はメモに記載して再提出する。
+[日本語]
+アカウント・API キーなどの設定は不要です。インストール後に開く設定画面の「プロフィール」でサンプル値を登録し、任意のフォームのページでツールバーのアイコン →「このページに入力」を押してください。しばらく使われていないと、最初の 1 回は判定の準備に 30 秒ほどかかることがあります。
+```
 
 ---
 
 ## 5. 提出前チェックリスト
 
 - [ ] `npm run typecheck && npm run test` が通る
+- [ ] `npm run e2e` が通る（モック）。実 Jev でのバリエーション確認は `E2E_REAL_JEV=1 npx playwright test e2e/variations.spec.ts`（結果は `test-results/variations-real-jev.md`）
 - [ ] `npm run package` で zip を生成し、`manifest.json` が zip のルートにある
-- [ ] zip の `manifest.json` の `host_permissions` が Jev API の 2 ホストのみ（`127.0.0.1` が混入していない）
+- [ ] zip の `manifest.json` の `host_permissions` が中継サーバー 1 つ（`https://formfill.yrctool.stream/*`）のみ（`127.0.0.1` が混入していない）
+- [ ] 中継サーバーが応答する（`curl https://formfill.yrctool.stream/health` → `{"ok":true}`）。AI Gateway のクレジット残高が審査期間中に尽きないこと
 - [ ] `version` が `package.json` / `manifest.json` / `CHANGELOG.md` で一致
-- [ ] スクリーンショット 4 枚（1280×800）とプロモタイル（440×280）を生成済み
+- [ ] スクリーンショット 4 枚（1280×800）・小プロモタイル（440×280）・マーキー（1400×560）が現在の UI で生成されている
 - [ ] `PRIVACY.md` の「最終更新日」が今回のリリース内容を反映している
 - [ ] デベロッパー アカウントのメールアドレス確認と 2 段階認証が完了している
-- [ ] 提出後: GitHub に `v0.1.0` タグを打ち、Release に同じ zip を添付する
+- [ ] 提出後: GitHub に `v<version>` タグを打ち、Release に同じ zip を添付する

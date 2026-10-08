@@ -8,6 +8,7 @@ import {
   deriveFullName,
   deriveFullNameKana,
   deriveFullNameRomaji,
+  formatBirthDateLike,
   splitByHyphen,
   splitForFieldCount,
 } from '../../src/shared/derive';
@@ -65,6 +66,21 @@ describe('derive: birth_year / birth_month / birth_day', () => {
   it('UNIT-DERIVE-08: 月・日はゼロ埋め2桁（表記ゆれ吸収は normalize 側の責務）', () => {
     expect(deriveBirthMonth('1990-01-31')).toBe('01');
     expect(deriveBirthDay('1990-01-31')).toBe('31');
+  });
+});
+
+describe('derive: 生年月日のテキスト欄（placeholder の書き方に合わせる）', () => {
+  it('スラッシュ・ドット・年月日・区切りなしの例に合わせる', () => {
+    expect(formatBirthDateLike('1990-01-31', '例）1980/01/01')).toBe('1990/01/31');
+    expect(formatBirthDateLike('1990-01-31', '1980.1.1')).toBe('1990.1.31');
+    expect(formatBirthDateLike('1990-01-31', '1980年1月1日')).toBe('1990年1月31日');
+    expect(formatBirthDateLike('1990-01-31', '19800101')).toBe('19900131');
+    expect(formatBirthDateLike('1990-01-31', '例）１９８０／０１／０１')).toBe('1990/01/31');
+  });
+  it('例が読み取れなければ保存値（YYYY-MM-DD）のまま', () => {
+    expect(formatBirthDateLike('1990-01-31', undefined)).toBe('1990-01-31');
+    expect(formatBirthDateLike('1990-01-31', '生年月日を入力')).toBe('1990-01-31');
+    expect(formatBirthDateLike('1990-01-31', '198001/01')).toBe('1990-01-31');
   });
 });
 

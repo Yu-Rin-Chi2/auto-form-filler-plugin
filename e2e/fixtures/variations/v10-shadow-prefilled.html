@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>イベント参加登録 | サンプルカンファレンス</title>
+</head>
+<body>
+<!--
+  バリエーション 10: Web Components（open Shadow DOM）の入力欄と、入力済みの欄の混在。
+  - <x-text-field> の中の input（shadow root 内）
+  - ログイン中のため、メールアドレスはすでに別の値が入っている → 上書きしない
+  - 会社名は select ではなく datalist 付きの input
+-->
+<h1>イベント参加登録</h1>
+<form action="#" onsubmit="return false">
+  <x-text-field data-label="お名前" data-name="attendee_name" data-id="attendee_name" data-key="full_name" data-expect="鈴木 一郎"></x-text-field>
+  <x-text-field data-label="フリガナ" data-name="attendee_kana" data-id="attendee_kana" data-key="full_name_kana" data-expect="スズキ イチロウ"></x-text-field>
+  <p><label for="attendee_email">メールアドレス</label>
+    <input type="email" id="attendee_email" name="attendee_email" value="already@filled.test" data-key="email" data-expect="already@filled.test"></p>
+  <p><label for="attendee_company">会社名</label>
+    <input type="text" id="attendee_company" name="attendee_company" list="companies" data-key="company" data-expect="イーツーイー株式会社">
+    <datalist id="companies"><option value="株式会社サンプル"></option></datalist></p>
+  <x-text-field data-label="部署" data-name="attendee_dept" data-id="attendee_dept" data-key="department" data-expect="検証部"></x-text-field>
+  <p><label for="session">参加セッション</label>
+    <select id="session" name="session" data-expect=""><option value="">選択</option><option>基調講演</option><option>ハンズオン</option></select></p>
+  <button type="submit">登録</button>
+</form>
+<script>
+  customElements.define('x-text-field', class extends HTMLElement {
+    connectedCallback() {
+      const root = this.attachShadow({ mode: 'open' });
+      root.innerHTML =
+        '<style>label{display:block;margin:8px 0}</style>' +
+        '<label>' + this.dataset.label + '<br><input type="text"></label>';
+      const input = root.querySelector('input');
+      input.name = this.dataset.name;
+      input.id = this.dataset.id;
+      input.setAttribute('data-key', this.dataset.key);
+      input.setAttribute('data-expect', this.dataset.expect);
+    }
+  });
+</script>
+</body>
+</html>

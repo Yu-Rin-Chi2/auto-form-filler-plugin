@@ -40,7 +40,12 @@ export interface CallResult {
   latencyMs: number;
 }
 
-const TIMEOUT_MS = 10_000;
+/**
+ * 1 回の呼び出しのタイムアウト。中継先（Workers AI 上の Jev）はふだん 1 秒未満で返るが、
+ * しばらく使われていないと 15〜37 秒かかることがある（2026-09-28 実測）。
+ * 10 秒で打ち切っていた頃は、この「最初の 1 回」がタイムアウトで失敗していた
+ */
+const TIMEOUT_MS = 45_000;
 const MAX_HTTP_RETRIES = 2;
 const DEFAULT_RETRY_WAIT_MS = 1500;
 /** Retry-After の尊重は上限 15 秒まで（レビュー指摘 A-1） */
@@ -78,9 +83,22 @@ async function waitWithKeepalive(waitMs: number): Promise<void> {
   }
 }
 
+/** 待機中に service worker がアイドル終了しないよう、軽い chrome.* API を呼ぶ（waitWithKeepalive と同じ理由） */
+function keepalive(): void {
+  try {
+    if (typeof chrome !== 'undefined' && chrome.runtime?.getPlatformInfo) {
+      void chrome.runtime.getPlatformInfo().catch(() => undefined);
+    }
+  } catch {
+    // chrome.* が使えない環境（テスト等）では何もしない
+  }
+}
+
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // 応答が 30 秒近くかかる場合もあるため、応答待ちの間も service worker を生かしておく
+  const keepaliveTimer = setInterval(keepalive, KEEPALIVE_INTERVAL_MS);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (e) {
@@ -90,6 +108,7 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
     throw new JevError('network', 'Jev に接続できません');
   } finally {
     clearTimeout(timer);
+    clearInterval(keepaliveTimer);
   }
 }
 

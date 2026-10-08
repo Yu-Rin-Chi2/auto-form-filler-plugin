@@ -1,83 +1,90 @@
-// public/icons/ 用の PNG アイコンを生成する簡易スクリプト。
-// 外部の画像素材を使わず、pngjs で単色の角丸四角 + 3 本の白いバー（フォーム入力欄のグリフ）を描画する。
-// 実行: node scripts/render-icons.mjs
-import { PNG } from 'pngjs';
-import { mkdirSync, writeFileSync } from 'node:fs';
+// public/icons/ 用の PNG アイコンを、Codex（image_gen）で生成した元画像から縮小して作る。
+// 元画像: docs/store/art/icon-source.png（透過背景の角丸正方形）
+// 縮小は Playwright（Chromium）の canvas で半分ずつ段階的に行い、小さいサイズでも潰れにくくする。
+// 128px は Chrome Web Store のガイドラインに合わせ、絵を 96px に収めて周囲 16px を透過の余白にする。
+// 実行: npm run render-icons
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chromium } from '@playwright/test';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const src = join(root, 'docs', 'store', 'art', 'icon-source.png');
 const outDir = join(root, 'public', 'icons');
-mkdirSync(outDir, { recursive: true });
 
-const SIZES = [16, 32, 48, 128];
-const BG = { r: 0x25, g: 0x63, b: 0xeb }; // #2563EB（アクセントカラー、要件 03-uiux 5.1）
-const FG = { r: 0xff, g: 0xff, b: 0xff };
+/** size: 出力サイズ, art: その中で絵が占めるサイズ */
+const TARGETS = [
+  { size: 16, art: 16 },
+  { size: 32, art: 32 },
+  { size: 48, art: 48 },
+  { size: 128, art: 96 },
+];
 
-function setPixel(png, x, y, r, g, b, a) {
-  if (x < 0 || y < 0 || x >= png.width || y >= png.height) return;
-  const idx = (png.width * y + x) << 2;
-  png.data[idx] = r;
-  png.data[idx + 1] = g;
-  png.data[idx + 2] = b;
-  png.data[idx + 3] = a;
-}
+const dataUrl = `data:image/png;base64,${readFileSync(src).toString('base64')}`;
+const browser = await chromium.launch();
+const page = await browser.newPage();
+const results = await page.evaluate(
+  async ({ dataUrl, targets }) => {
+    const img = new Image();
+    img.src = dataUrl;
+    await img.decode();
 
-/** 幅 w・高さ h の矩形内で、角丸半径 radius の内側に (x, y) が収まるか */
-function inRoundedRect(x, y, w, h, radius) {
-  const rx = Math.min(radius, w / 2);
-  const ry = Math.min(radius, h / 2);
-  if (x >= rx && x <= w - 1 - rx) return true;
-  if (y >= ry && y <= h - 1 - ry) return true;
-  const cx = x < rx ? rx : w - 1 - rx;
-  const cy = y < ry ? ry : h - 1 - ry;
-  const dx = x - cx;
-  const dy = y - cy;
-  return (dx * dx) / (rx * rx || 1) + (dy * dy) / (ry * ry || 1) <= 1;
-}
-
-function renderIcon(size) {
-  const png = new PNG({ width: size, height: size });
-  const radius = Math.max(1, Math.round(size * 0.22));
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (inRoundedRect(x, y, size, size, radius)) {
-        setPixel(png, x, y, BG.r, BG.g, BG.b, 255);
-      } else {
-        setPixel(png, x, y, 0, 0, 0, 0);
-      }
-    }
-  }
-
-  // フォームの入力欄を模した3本の白いバー（ロゴ的な図形）
-  const barHeight = Math.max(1, Math.round(size * 0.09));
-  const barRadius = Math.max(1, Math.round(barHeight / 2));
-  const barGap = Math.max(1, Math.round(size * 0.16));
-  const marginX = Math.round(size * 0.24);
-  const widthRatios = [0.52, 0.52, 0.34];
-  const totalHeight = barHeight * widthRatios.length + barGap * (widthRatios.length - 1);
-  let startY = Math.round((size - totalHeight) / 2);
-
-  for (const ratio of widthRatios) {
-    const barWidth = Math.max(1, Math.round((size - marginX * 2) * ratio));
-    for (let y = 0; y < barHeight; y++) {
-      for (let x = 0; x < barWidth; x++) {
-        if (inRoundedRect(x, y, barWidth, barHeight, barRadius)) {
-          setPixel(png, marginX + x, startY + y, FG.r, FG.g, FG.b, 255);
+    // 透過部分を除いた絵の範囲を求める
+    const full = document.createElement('canvas');
+    full.width = img.width;
+    full.height = img.height;
+    const fctx = full.getContext('2d');
+    fctx.drawImage(img, 0, 0);
+    const { data } = fctx.getImageData(0, 0, img.width, img.height);
+    let minX = img.width, minY = img.height, maxX = -1, maxY = -1;
+    for (let y = 0; y < img.height; y++) {
+      for (let x = 0; x < img.width; x++) {
+        if (data[(y * img.width + x) * 4 + 3] > 16) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
         }
       }
     }
-    startY += barHeight + barGap;
-  }
+    const side = Math.max(maxX - minX + 1, maxY - minY + 1);
+    const cx = (minX + maxX + 1) / 2;
+    const cy = (minY + maxY + 1) / 2;
 
-  return png;
-}
+    let source = document.createElement('canvas');
+    source.width = side;
+    source.height = side;
+    source.getContext('2d').drawImage(full, cx - side / 2, cy - side / 2, side, side, 0, 0, side, side);
 
-for (const size of SIZES) {
-  const png = renderIcon(size);
-  const buffer = PNG.sync.write(png);
-  const outPath = join(outDir, `icon${size}.png`);
-  writeFileSync(outPath, buffer);
+    const out = {};
+    for (const t of targets) {
+      let cur = source;
+      while (cur.width / 2 >= t.art) {
+        const next = document.createElement('canvas');
+        next.width = Math.round(cur.width / 2);
+        next.height = Math.round(cur.height / 2);
+        const ctx = next.getContext('2d');
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(cur, 0, 0, next.width, next.height);
+        cur = next;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = t.size;
+      canvas.height = t.size;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      const offset = (t.size - t.art) / 2;
+      ctx.drawImage(cur, offset, offset, t.art, t.art);
+      out[t.size] = canvas.toDataURL('image/png').split(',')[1];
+    }
+    return out;
+  },
+  { dataUrl, targets: TARGETS },
+);
+await browser.close();
+
+for (const t of TARGETS) {
+  const outPath = join(outDir, `icon${t.size}.png`);
+  writeFileSync(outPath, Buffer.from(results[t.size], 'base64'));
   console.log(`[render-icons] wrote ${outPath}`);
 }

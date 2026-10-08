@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getLastResult, getLastResultDetail, getProfiles, getSettings } from '../../shared/storage';
+import { normalizePageUrl } from '../../shared/url';
 import type { FieldOutcome, FillOutcomeMessageResponse, FillResult, Profile, Settings } from '../../shared/types';
 
 export type PopupPhase = 'loading' | 'no_profile' | 'ready';
@@ -16,6 +17,16 @@ export interface PopupState {
   runFill: () => Promise<void>;
 }
 
+/** アクティブタブの URL（origin + pathname）。取得できなければ null */
+async function getActivePageUrl(): Promise<string | null> {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tab?.url ? normalizePageUrl(tab.url) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function usePopupState(): PopupState {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -28,17 +39,22 @@ export function usePopupState(): PopupState {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [p, s, r, d] = await Promise.all([
+      const [p, s, r, d, pageUrl] = await Promise.all([
         getProfiles(),
         getSettings(),
         getLastResult(),
         getLastResultDetail(),
+        getActivePageUrl(),
       ]);
       if (cancelled) return;
       setProfiles(p);
       setSettings(s);
-      setResult(r);
-      setDetails(d);
+      // 前回の結果は端末に 1 件だけ保存している。別のページで開いたときに前のページの結果を
+      // 出さないよう、いま開いているページで実行したものだけ表示する
+      if (r && pageUrl && normalizePageUrl(r.url) === pageUrl) {
+        setResult(r);
+        setDetails(d);
+      }
       const initialId =
         s.lastProfileId && p.some((x) => x.id === s.lastProfileId) ? s.lastProfileId : (p[0]?.id ?? '');
       setSelectedProfileId(initialId);

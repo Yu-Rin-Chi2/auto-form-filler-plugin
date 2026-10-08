@@ -171,6 +171,15 @@ export function snsProfileUrl(key: SnsFieldKey, value: string): string {
   return handle ? SNS_URL_BUILDERS[key](handle) : '';
 }
 
+/**
+ * フィールドが `@` 抜きの ID を求めているか（「@以降を入力」「@なし」「@不要」「without @」など）。
+ * 保存値が `@yamada` でも、この欄には `yamada` を入れる
+ */
+export function wantsBareHandle(field: { label?: string; placeholder?: string }): boolean {
+  const text = `${field.label ?? ''} ${field.placeholder ?? ''}`;
+  return /[@＠]\s*(マーク)?\s*(以降|以下|より後|の後|なし|無し|抜き|不要|を除|は不要|は入れ|を入れず)|without\s+(the\s+)?@/i.test(text);
+}
+
 /** フィールドが URL を要求しているか（type=url、ラベル / placeholder / name に URL・http） */
 export function wantsUrl(field: { type?: string; label?: string; placeholder?: string; name?: string }): boolean {
   if (field.type === 'url') return true;
@@ -213,6 +222,25 @@ export function deriveBirthMonth(birthDate: string): string {
 export function deriveBirthDay(birthDate: string): string {
   const p = parseBirthDate(birthDate);
   return p ? String(p.day).padStart(2, '0') : '';
+}
+
+/** placeholder の日付の例（1980/01/01・1980.1.1・1980年1月1日・19800101 等）。区切りと桁の揃え方を読み取る */
+const DATE_EXAMPLE_PATTERN = /(\d{4})([/.\-年]?)(\d{1,2})([/.\-月]?)(\d{1,2})(日?)/;
+
+/**
+ * テキスト欄の生年月日を、placeholder の例と同じ書き方にする（例: 「例）1980/01/01」→ 1990/01/31）。
+ * 例が読み取れなければ保存値（YYYY-MM-DD）のまま
+ */
+export function formatBirthDateLike(birthDate: string, placeholder?: string): string {
+  const p = parseBirthDate(birthDate);
+  const m = placeholder ? DATE_EXAMPLE_PATTERN.exec(placeholder.normalize('NFKC')) : null;
+  if (!p || !m) return birthDate;
+  const [, , sep1 = '', monthExample = '', sep2 = '', dayExample = '', daySuffix = ''] = m;
+  // 区切りなし（19800101）は 8 桁のときだけ。区切りが片方だけの表記は読み違いの恐れがあるので使わない
+  if (!sep1 !== !sep2) return birthDate;
+  if (!sep1 && monthExample.length + dayExample.length !== 4) return birthDate;
+  const pad = (n: number, example: string) => (example.length === 2 ? String(n).padStart(2, '0') : String(n));
+  return `${p.year}${sep1}${pad(p.month, monthExample)}${sep2}${pad(p.day, dayExample)}${daySuffix}`;
 }
 
 /**
